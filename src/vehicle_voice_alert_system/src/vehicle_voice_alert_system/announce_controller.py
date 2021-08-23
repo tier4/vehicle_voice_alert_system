@@ -108,7 +108,6 @@ class AnnounceControllerProperty():
             self.send_announce("turning_right")
 
         self._signal_announce_time = self._node.get_clock().now()
-        
 
     # 停止する予定を取得
     def sub_stop_reason(self, stop_reason):
@@ -131,7 +130,7 @@ class AnnounceControllerProperty():
 
             if shortest_stop_reason in ["ObstacleStop", "DetectionArea", "SurroundObstacleCheck", "BlindSpot", "BlockedByObstacles"]:
                 self.send_announce("obstacle_detect")
-            elif shortest_stop_reason == ["StopLine", "Walkway", "Crosswalk", "MergeFromPrivateRoad"]:
+            elif shortest_stop_reason in ["StopLine", "Walkway", "Crosswalk", "MergeFromPrivateRoad"]:
                 self.send_announce("temporary_stop")
 
             self._stop_reason_announce_time = self._node.get_clock().now()
