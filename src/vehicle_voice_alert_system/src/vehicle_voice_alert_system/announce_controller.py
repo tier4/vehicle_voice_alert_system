@@ -21,7 +21,7 @@ class AnnounceControllerProperty():
     def __init__(self, node, autoware_state_interface=None):
         super(AnnounceControllerProperty, self).__init__()
         autoware_state_interface.set_autoware_state_callback(self.sub_autoware_state)
-        # autoware_state_interface.set_emergency_stopped_callback(self.sub_emergency)
+        autoware_state_interface.set_emergency_stopped_callback(self.sub_emergency)
         autoware_state_interface.set_turn_signal_callback(self.check_turn_signal)
         autoware_state_interface.set_stop_reason_callback(self.sub_stop_reason)
 
@@ -33,6 +33,7 @@ class AnnounceControllerProperty():
         self._pending_announce_list = []
         self._emergency_trigger_time = 0
         self._wav_object = None
+        self._in_stop_status = False
         self._signal_announce_time = self._node.get_clock().now()
         self._stop_reason_announce_time = self._node.get_clock().now()
         self._package_path = get_package_share_directory('vehicle_voice_alert_system') + "/resource/sound/"
@@ -76,9 +77,9 @@ class AnnounceControllerProperty():
                 self._wav_object.stop()
             self.play_sound(message)
         elif priority > previous_priority:
-                if self._wav_object:
-                    self._wav_object.stop()
-                self.play_sound(message)
+            if self._wav_object:
+                self._wav_object.stop()
+            self.play_sound(message)
         self._current_announce = message
 
     def sub_autoware_state(self, autoware_state):
@@ -92,14 +93,14 @@ class AnnounceControllerProperty():
 
     def sub_emergency(self, emergency_stopped):
         if emergency_stopped and not self._in_emergency_state:
-            self.send_announce("temporary_stop")
             self._in_emergency_state = True
         elif not emergency_stopped and self._in_emergency_state:
-            self.send_announce("departure")
             self._in_emergency_state = False
 
     def check_turn_signal(self, turn_signal):
         if self._node.get_clock().now() - self._signal_announce_time < Duration(seconds=5):
+            return
+        elif self._in_emergency_state or self._in_stop_status:
             return
 
         if turn_signal == 1:
@@ -129,8 +130,14 @@ class AnnounceControllerProperty():
                 return
 
             if shortest_stop_reason in ["ObstacleStop", "DetectionArea", "SurroundObstacleCheck", "BlindSpot", "BlockedByObstacles"]:
+                self._in_stop_status = True
                 self.send_announce("obstacle_detect")
             elif shortest_stop_reason in ["StopLine", "Walkway", "Crosswalk", "MergeFromPrivateRoad"]:
                 self.send_announce("temporary_stop")
+                self._in_stop_status = True
+            else:
+                self._in_stop_status = False
 
             self._stop_reason_announce_time = self._node.get_clock().now()
+        else:
+            self._in_stop_status = False
