@@ -1,0 +1,4 @@
+<?xml version="1.0"?>
+<launch>
+  <node pkg="vehicle_voice_alert_system" exec="vehicle_voice_alert_system"  output="screen"/>
+</launch>
