@@ -22,10 +22,12 @@ class AnnounceControllerProperty():
         super(AnnounceControllerProperty, self).__init__()
         autoware_state_interface.set_autoware_state_callback(self.sub_autoware_state)
         autoware_state_interface.set_emergency_stopped_callback(self.sub_emergency)
+        autoware_state_interface.set_control_mode_callback(self.sub_control_mode)
         autoware_state_interface.set_turn_signal_callback(self.check_turn_signal)
         autoware_state_interface.set_stop_reason_callback(self.sub_stop_reason)
 
         self._node = node
+        self.is_auto_mode = False
         self._in_driving_state = False
         self._in_emergency_state = False
         self._autoware_state = ""
@@ -52,6 +54,9 @@ class AnnounceControllerProperty():
         except Exception as e:
             self._node.get_logger().error("not able to check the pending playing list: " + str(e))
 
+    def sub_control_mode(self, control_mode):
+        self.is_auto_mode = control_mode == 1
+
     def check_playing_callback(self):
         try:
             if not self._current_announce or not self._wav_object:
@@ -69,6 +74,10 @@ class AnnounceControllerProperty():
         self._wav_object = sound.play()
 
     def send_announce(self, message):
+        if not self.is_auto_mode:
+            self._node.get_logger().warning("is in manual mode, skip announce")
+            return
+
         priority = PRIORITY_DICT.get(message, 0)
         previous_priority = PRIORITY_DICT.get(self._current_announce, 0)
 
