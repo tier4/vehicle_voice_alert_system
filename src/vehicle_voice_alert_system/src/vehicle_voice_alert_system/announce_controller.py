@@ -15,6 +15,7 @@ PRIORITY_DICT = {
     "temporary_stop" : 2,
     "turning_left" : 1,
     "turning_right" : 1,
+    "running_music" : 1
 }
 
 class AnnounceControllerProperty():
@@ -25,6 +26,7 @@ class AnnounceControllerProperty():
         autoware_state_interface.set_control_mode_callback(self.sub_control_mode)
         autoware_state_interface.set_turn_signal_callback(self.check_turn_signal)
         autoware_state_interface.set_stop_reason_callback(self.sub_stop_reason)
+        autoware_state_interface.set_velocity_callback(self.sub_velocity)
 
         self._node = node
         self.is_auto_mode = False
@@ -34,6 +36,7 @@ class AnnounceControllerProperty():
         self._current_announce = ""
         self._pending_announce_list = []
         self._emergency_trigger_time = 0
+        self._velocity = 0
         self._wav_object = None
         self._in_stop_status = False
         self._signal_announce_time = self._node.get_clock().now()
@@ -45,6 +48,9 @@ class AnnounceControllerProperty():
 
     def process_pending_announce(self):
         try:
+            if not self._pending_announce_list and self._velocity > 1.0:
+                self.send_announce("running_music")
+
             for play_sound in self._pending_announce_list:
                 self._pending_announce_list.remove(play_sound)
                 current_time = self._node.get_clock().now().to_msg().sec
@@ -54,16 +60,18 @@ class AnnounceControllerProperty():
         except Exception as e:
             self._node.get_logger().error("not able to check the pending playing list: " + str(e))
 
+    def sub_velocity(self, velocity):
+        self._velocity = velocity
+
     def sub_control_mode(self, control_mode):
         self.is_auto_mode = control_mode == 1
 
     def check_playing_callback(self):
         try:
-            if not self._current_announce or not self._wav_object:
-                self._current_announce = ""
-                return
+            if self._current_announce == "running_music" and self._velocity < 1:
+                self._wav_object.stop()
 
-            if not self._wav_object.is_playing():
+            if not self._current_announce or not self._wav_object or not self._wav_object.is_playing():
                 self._current_announce = ""
                 self.process_pending_announce()
         except Exception as e:
@@ -102,9 +110,16 @@ class AnnounceControllerProperty():
 
     def sub_emergency(self, emergency_stopped):
         if emergency_stopped and not self._in_emergency_state:
+            self.send_announce("stop")
             self._in_emergency_state = True
         elif not emergency_stopped and self._in_emergency_state:
             self._in_emergency_state = False
+        elif emergency_stopped and self._in_emergency_state:
+            if not self._emergency_trigger_time:
+                self._emergency_trigger_time = self._node.get_clock().now().to_msg().sec
+            elif self._node.get_clock().now().to_msg().sec - self._emergency_trigger_time > 10:
+                self.send_announce("stop")
+                self._emergency_trigger_time = 0
 
     def check_turn_signal(self, turn_signal):
         if self._node.get_clock().now() - self._signal_announce_time < Duration(seconds=5):
