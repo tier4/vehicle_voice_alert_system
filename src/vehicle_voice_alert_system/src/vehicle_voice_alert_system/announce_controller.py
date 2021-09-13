@@ -12,6 +12,7 @@ PRIORITY_DICT = {
     "departure" : 4,
     "stop" : 4,
     "obstacle_detect": 3,
+    "in_emergency": 2,
     "temporary_stop" : 2,
     "turning_left" : 1,
     "turning_right" : 1,
@@ -117,8 +118,8 @@ class AnnounceControllerProperty():
         elif emergency_stopped and self._in_emergency_state:
             if not self._emergency_trigger_time:
                 self._emergency_trigger_time = self._node.get_clock().now().to_msg().sec
-            elif self._node.get_clock().now().to_msg().sec - self._emergency_trigger_time > 10:
-                self.send_announce("stop")
+            elif self._node.get_clock().now().to_msg().sec - self._emergency_trigger_time > 30:
+                self.send_announce("in_emergency")
                 self._emergency_trigger_time = 0
 
     def check_turn_signal(self, turn_signal):
