@@ -9,13 +9,13 @@ from rclpy.duration import Duration
 
 # The higher the value, the higher the priority
 PRIORITY_DICT = {
-    "departure" : 4,
-    "stop" : 4,
-    "obstacle_detect": 3,
-    "in_emergency": 2,
-    "temporary_stop" : 2,
-    "turning_left" : 1,
-    "turning_right" : 1,
+    "departure" : 5,
+    "stop" : 5,
+    "obstacle_detect": 4,
+    "in_emergency": 3,
+    "temporary_stop" : 3,
+    "turning_left" : 2,
+    "turning_right" : 2,
     "running_music" : 1
 }
 
@@ -47,17 +47,10 @@ class AnnounceControllerProperty():
             1,
             self.check_playing_callback)
 
-    def process_pending_announce(self):
+    def process_running_music(self):
         try:
-            if not self._pending_announce_list and self._velocity > 1.0:
+            if self._velocity > 1.0:
                 self.send_announce("running_music")
-
-            for play_sound in self._pending_announce_list:
-                self._pending_announce_list.remove(play_sound)
-                current_time = self._node.get_clock().now().to_msg().sec
-                if current_time - play_sound["requested_time"] <= 10:
-                    self.send_announce(play_sound["message"])
-                    break
         except Exception as e:
             self._node.get_logger().error("not able to check the pending playing list: " + str(e))
 
@@ -74,7 +67,7 @@ class AnnounceControllerProperty():
 
             if not self._current_announce or not self._wav_object or not self._wav_object.is_playing():
                 self._current_announce = ""
-                self.process_pending_announce()
+                self.process_running_music()
         except Exception as e:
             self._node.get_logger().error("not able to check the current playing: " + str(e))
 
@@ -90,11 +83,7 @@ class AnnounceControllerProperty():
         priority = PRIORITY_DICT.get(message, 0)
         previous_priority = PRIORITY_DICT.get(self._current_announce, 0)
 
-        if priority == 4:
-            if self._wav_object:
-                self._wav_object.stop()
-            self.play_sound(message)
-        elif priority > previous_priority:
+        if priority > previous_priority:
             if self._wav_object:
                 self._wav_object.stop()
             self.play_sound(message)
