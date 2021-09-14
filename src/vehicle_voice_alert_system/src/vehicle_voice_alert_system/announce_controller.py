@@ -10,14 +10,13 @@ from autoware_hmi_msgs.srv import Announce
 
 # The higher the value, the higher the priority
 PRIORITY_DICT = {
-    "departure" : 5,
-    "stop" : 5,
-    "obstacle_detect": 4,
+    "departure" : 4,
+    "stop" : 4,
+    "obstacle_detect": 3,
     "in_emergency": 3,
-    "temporary_stop" : 3,
-    "turning_left" : 2,
-    "turning_right" : 2,
-    "running_music" : 1
+    "temporary_stop" : 2,
+    "turning_left" : 1,
+    "turning_right" : 1,
 }
 
 class AnnounceControllerProperty():
@@ -66,7 +65,7 @@ class AnnounceControllerProperty():
 
     def process_running_music(self):
         try:
-            if self._velocity > 1.0 and (not self._music_object or not self._music_object.is_playing()):
+            if self._in_driving_state and (not self._music_object or not self._music_object.is_playing()):
                 sound = WaveObject.from_wave_file(self._package_path + "running_music.wav")
                 self._music_object = sound.play()
             elif self._velocity < 1.0 and self._music_object and self._music_object.is_playing():
@@ -121,11 +120,10 @@ class AnnounceControllerProperty():
 
     def sub_emergency(self, emergency_stopped):
         if emergency_stopped and not self._in_emergency_state:
-            self.send_announce("stop")
             self._in_emergency_state = True
         elif not emergency_stopped and self._in_emergency_state:
             self._in_emergency_state = False
-        elif emergency_stopped and self._in_emergency_state:
+        elif emergency_stopped and self._in_emergency_state and not self._in_stop_status:
             if not self._emergency_trigger_time:
                 self._emergency_trigger_time = self._node.get_clock().now().to_msg().sec
             elif self._node.get_clock().now().to_msg().sec - self._emergency_trigger_time > 30:
