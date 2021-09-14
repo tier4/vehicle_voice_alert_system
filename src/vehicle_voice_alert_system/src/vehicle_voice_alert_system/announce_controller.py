@@ -51,7 +51,7 @@ class AnnounceControllerProperty():
     def process_running_music(self):
         try:
             if self._velocity > 1.0 and (not self._music_object or not self._music_object.is_playing()):
-                sound = WaveObject.from_wave_file(self._package_path + "running_music_reduce_90.wav")
+                sound = WaveObject.from_wave_file(self._package_path + "running_music.wav")
                 self._music_object = sound.play()
             elif self._velocity < 1.0 and self._music_object and self._music_object.is_playing():
                 self._music_object.stop()
@@ -71,7 +71,7 @@ class AnnounceControllerProperty():
                 self._current_announce = ""
                 return
 
-            if not self._current_announce and not self._wav_object.is_playing():
+            if not self._wav_object.is_playing():
                 self._current_announce = ""
         except Exception as e:
             self._node.get_logger().error("not able to check the current playing: " + str(e))
@@ -89,14 +89,10 @@ class AnnounceControllerProperty():
         priority = PRIORITY_DICT.get(message, 0)
         previous_priority = PRIORITY_DICT.get(self._current_announce, 0)
 
-        if self._wav_object:
-            if not self._wav_object.is_playing():
-                self.play_sound(message)
-        elif priority > previous_priority:
+        if priority > previous_priority:
             if self._wav_object:
                 self._wav_object.stop()
             self.play_sound(message)
-
         self._current_announce = message
 
     def sub_autoware_state(self, autoware_state):
