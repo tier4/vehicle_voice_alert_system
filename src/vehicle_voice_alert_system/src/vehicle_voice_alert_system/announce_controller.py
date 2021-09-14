@@ -65,11 +65,13 @@ class AnnounceControllerProperty():
 
     def process_running_music(self):
         try:
-            if self._in_driving_state and (not self._music_object or not self._music_object.is_playing()):
-                sound = WaveObject.from_wave_file(self._package_path + "running_music.wav")
-                self._music_object = sound.play()
-            elif self._velocity < 1.0 and self._music_object and self._music_object.is_playing():
-                self._music_object.stop()
+            if self._in_driving_state and not self._in_emergency_state:
+                if not self._music_object or not self._music_object.is_playing():
+                    sound = WaveObject.from_wave_file(self._package_path + "running_music.wav")
+                    self._music_object = sound.play()
+            else:
+                if self._music_object and self._music_object.is_playing():
+                    self._music_object.stop()
         except Exception as e:
             self._node.get_logger().error("not able to check the pending playing list: " + str(e))
 
@@ -92,7 +94,6 @@ class AnnounceControllerProperty():
             self._node.get_logger().error("not able to check the current playing: " + str(e))
 
     def play_sound(self, message):
-        self._node.get_logger().error(message)
         sound = WaveObject.from_wave_file(self._package_path + message + ".wav")
         self._wav_object = sound.play()
 
@@ -113,7 +114,7 @@ class AnnounceControllerProperty():
     def sub_autoware_state(self, autoware_state):
         if autoware_state == "Driving" and not self._in_driving_state:
             self._in_driving_state = True
-        elif autoware_state == "ArrivedGoal" and self._in_driving_state:
+        elif autoware_state in ["WaitingForRoute", "WaitingForEngage", "ArrivedGoal", "Planning"] and self._in_driving_state:
             self.send_announce("stop")
             self._in_driving_state = False
         self._autoware_state = autoware_state
