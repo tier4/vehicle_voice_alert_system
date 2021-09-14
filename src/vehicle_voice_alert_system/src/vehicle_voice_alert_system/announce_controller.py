@@ -6,6 +6,7 @@ from simpleaudio import WaveObject
 from ament_index_python.packages import get_package_share_directory
 from autoware_external_api_msgs.srv import Engage
 from rclpy.duration import Duration
+from autoware_hmi_msgs.srv import Announce
 
 # The higher the value, the higher the priority
 PRIORITY_DICT = {
@@ -47,6 +48,21 @@ class AnnounceControllerProperty():
         self._check_playing_timer = self._node.create_timer(
             1,
             self.check_playing_callback)
+        self._srv = self._node.create_service(Announce, '/api/vehicle_voice/set/announce', self.announce_service)
+
+    def announce_service(self, request, response):
+        try:
+            annouce_type = request.kind
+            if annouce_type == 1:
+                self.send_announce("departure")
+            elif annouce_type == 2:
+                self.send_announce("departure")
+
+            if self._wav_object.is_playing():
+                self._wav_object.wait_done()
+        except Exception as e:
+            self._node.get_logger().error("not able to play the annoucen, ERROR: {}".format(str(e)))
+        return response
 
     def process_running_music(self):
         try:
@@ -97,7 +113,6 @@ class AnnounceControllerProperty():
 
     def sub_autoware_state(self, autoware_state):
         if autoware_state == "Driving" and not self._in_driving_state:
-            self.send_announce("departure")
             self._in_driving_state = True
         elif autoware_state == "ArrivedGoal" and self._in_driving_state:
             self.send_announce("stop")
