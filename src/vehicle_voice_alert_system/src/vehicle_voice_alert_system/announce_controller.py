@@ -27,7 +27,6 @@ class AnnounceControllerProperty():
         autoware_state_interface.set_control_mode_callback(self.sub_control_mode)
         autoware_state_interface.set_turn_signal_callback(self.check_turn_signal)
         autoware_state_interface.set_stop_reason_callback(self.sub_stop_reason)
-        autoware_state_interface.set_velocity_callback(self.sub_velocity)
 
         self._node = node
         self.is_auto_mode = False
@@ -37,7 +36,6 @@ class AnnounceControllerProperty():
         self._current_announce = ""
         self._pending_announce_list = []
         self._emergency_trigger_time = 0
-        self._velocity = 0
         self._wav_object = None
         self._music_object = None
         self._in_stop_status = False
@@ -74,9 +72,6 @@ class AnnounceControllerProperty():
                     self._music_object.stop()
         except Exception as e:
             self._node.get_logger().error("not able to check the pending playing list: " + str(e))
-
-    def sub_velocity(self, velocity):
-        self._velocity = velocity
 
     def sub_control_mode(self, control_mode):
         self.is_auto_mode = control_mode == 1
