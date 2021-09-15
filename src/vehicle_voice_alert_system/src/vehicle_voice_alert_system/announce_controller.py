@@ -13,6 +13,7 @@ PRIORITY_DICT = {
     "departure" : 4,
     "stop" : 4,
     "obstacle_detect": 3,
+    "in_emergency": 3,
     "temporary_stop" : 2,
     "turning_left" : 1,
     "turning_right" : 1,
@@ -36,6 +37,7 @@ class AnnounceControllerProperty():
         self._pending_announce_list = []
         self._emergency_trigger_time = 0
         self._wav_object = None
+        self._music_object = None
         self._in_stop_status = False
         self._signal_announce_time = self._node.get_clock().now()
         self._stop_reason_announce_time = self._node.get_clock().now()
@@ -59,14 +61,15 @@ class AnnounceControllerProperty():
             self._node.get_logger().error("not able to play the annoucen, ERROR: {}".format(str(e)))
         return response
 
-    def process_pending_announce(self):
+    def process_running_music(self):
         try:
-            for play_sound in self._pending_announce_list:
-                self._pending_announce_list.remove(play_sound)
-                current_time = self._node.get_clock().now().to_msg().sec
-                if current_time - play_sound["requested_time"] <= 10:
-                    self.send_announce(play_sound["message"])
-                    break
+            if self._in_driving_state and not self._in_emergency_state:
+                if not self._music_object or not self._music_object.is_playing():
+                    sound = WaveObject.from_wave_file(self._package_path + "running_music.wav")
+                    self._music_object = sound.play()
+            else:
+                if self._music_object and self._music_object.is_playing():
+                    self._music_object.stop()
         except Exception as e:
             self._node.get_logger().error("not able to check the pending playing list: " + str(e))
 
@@ -75,13 +78,13 @@ class AnnounceControllerProperty():
 
     def check_playing_callback(self):
         try:
-            if not self._current_announce or not self._wav_object:
+            self.process_running_music()
+            if not self._wav_object:
                 self._current_announce = ""
                 return
 
             if not self._wav_object.is_playing():
                 self._current_announce = ""
-                self.process_pending_announce()
         except Exception as e:
             self._node.get_logger().error("not able to check the current playing: " + str(e))
 
@@ -97,11 +100,7 @@ class AnnounceControllerProperty():
         priority = PRIORITY_DICT.get(message, 0)
         previous_priority = PRIORITY_DICT.get(self._current_announce, 0)
 
-        if priority == 4:
-            if self._wav_object:
-                self._wav_object.stop()
-            self.play_sound(message)
-        elif priority > previous_priority:
+        if priority > previous_priority:
             if self._wav_object:
                 self._wav_object.stop()
             self.play_sound(message)
@@ -110,7 +109,7 @@ class AnnounceControllerProperty():
     def sub_autoware_state(self, autoware_state):
         if autoware_state == "Driving" and not self._in_driving_state:
             self._in_driving_state = True
-        elif autoware_state == "ArrivedGoal" and self._in_driving_state:
+        elif autoware_state in ["WaitingForRoute", "WaitingForEngage", "ArrivedGoal", "Planning"] and self._in_driving_state:
             self.send_announce("stop")
             self._in_driving_state = False
         self._autoware_state = autoware_state
@@ -120,6 +119,12 @@ class AnnounceControllerProperty():
             self._in_emergency_state = True
         elif not emergency_stopped and self._in_emergency_state:
             self._in_emergency_state = False
+        elif emergency_stopped and self._in_emergency_state and not self._in_stop_status:
+            if not self._emergency_trigger_time:
+                self._emergency_trigger_time = self._node.get_clock().now().to_msg().sec
+            elif self._node.get_clock().now().to_msg().sec - self._emergency_trigger_time > 30:
+                self.send_announce("in_emergency")
+                self._emergency_trigger_time = 0
 
     def check_turn_signal(self, turn_signal):
         if self._node.get_clock().now() - self._signal_announce_time < Duration(seconds=5):
