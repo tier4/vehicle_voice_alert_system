@@ -27,9 +27,11 @@ class AnnounceControllerProperty():
         autoware_state_interface.set_control_mode_callback(self.sub_control_mode)
         autoware_state_interface.set_turn_signal_callback(self.check_turn_signal)
         autoware_state_interface.set_stop_reason_callback(self.sub_stop_reason)
+        autoware_state_interface.set_velocity_callback(self.sub_velocity)
 
         self._node = node
         self.is_auto_mode = False
+        self._is_auto_running = False
         self._in_driving_state = False
         self._in_emergency_state = False
         self._autoware_state = ""
@@ -52,11 +54,12 @@ class AnnounceControllerProperty():
             annouce_type = request.kind
             if annouce_type == 1:
                 self.send_announce("departure")
-            elif annouce_type == 2:
+            elif annouce_type == 2 and self._is_auto_running:
                 self.send_announce("departure")
 
-            if self._wav_object.is_playing():
-                self._wav_object.wait_done()
+            if self._wav_object:
+                if self._wav_object.is_playing():
+                    self._wav_object.wait_done()
         except Exception as e:
             self._node.get_logger().error("not able to play the annoucen, ERROR: {}".format(str(e)))
         return response
@@ -106,11 +109,18 @@ class AnnounceControllerProperty():
             self.play_sound(message)
         self._current_announce = message
 
+    def sub_velocity(self, velocity):
+        if velocity > 0 and self.is_auto_mode and self._in_driving_state:
+            self._is_auto_running = True
+        elif velocity < 0:
+            self._is_auto_running = False
+
     def sub_autoware_state(self, autoware_state):
         if autoware_state == "Driving" and not self._in_driving_state:
             self._in_driving_state = True
         elif autoware_state in ["WaitingForRoute", "WaitingForEngage", "ArrivedGoal", "Planning"] and self._in_driving_state:
             self.send_announce("stop")
+            self._is_auto_running = False
             self._in_driving_state = False
         self._autoware_state = autoware_state
 
