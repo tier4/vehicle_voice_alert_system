@@ -12,6 +12,7 @@ from autoware_hmi_msgs.srv import Announce
 PRIORITY_DICT = {
     "departure" : 4,
     "stop" : 4,
+    "restart_engage": 3,
     "obstacle_detect": 3,
     "in_emergency": 3,
     "temporary_stop" : 2,
@@ -55,7 +56,7 @@ class AnnounceControllerProperty():
             if annouce_type == 1:
                 self.send_announce("departure")
             elif annouce_type == 2 and self._is_auto_running:
-                self.send_announce("departure")
+                self.send_announce("restart_engage")
 
             if self._wav_object:
                 if self._wav_object.is_playing():

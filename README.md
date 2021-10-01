@@ -30,3 +30,6 @@ bash start.sh
 cd vehicle_voice_alert_ystem
 colcon build
 ```
+
+## License
+音声・音楽：魔王魂、jtalk
