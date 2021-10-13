@@ -10,6 +10,7 @@ from autoware_hmi_msgs.srv import Announce
 
 # The higher the value, the higher the priority
 PRIORITY_DICT = {
+    "alarm": 4,
     "departure" : 4,
     "stop" : 4,
     "restart_engage": 3,
@@ -127,6 +128,7 @@ class AnnounceControllerProperty():
 
     def sub_emergency(self, emergency_stopped):
         if emergency_stopped and not self._in_emergency_state:
+            self.send_announce("alarm")
             self._in_emergency_state = True
         elif not emergency_stopped and self._in_emergency_state:
             self._in_emergency_state = False
