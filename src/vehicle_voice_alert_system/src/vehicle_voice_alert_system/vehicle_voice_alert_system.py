@@ -7,8 +7,9 @@ from vehicle_voice_alert_system.announce_controller import AnnounceControllerPro
 from vehicle_voice_alert_system.autoware_state_interface import AutowareStateInterface
 from ament_index_python.packages import get_package_share_directory
 
+
 def main(args=None):
-    package_path = get_package_share_directory('vehicle_voice_alert_system')
+    package_path = get_package_share_directory("vehicle_voice_alert_system")
 
     rclpy.init(args=args)
     node = Node("vehicle_voice_alert_system")
@@ -20,7 +21,6 @@ def main(args=None):
     node.destroy_node()
     rclpy.shutdown()
 
+
 if __name__ == "__main__":
     main()
-
-
