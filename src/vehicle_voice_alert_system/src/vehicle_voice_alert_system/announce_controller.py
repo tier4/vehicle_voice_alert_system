@@ -36,6 +36,7 @@ class AnnounceControllerProperty():
         self._is_auto_running = False
         self._in_driving_state = False
         self._in_emergency_state = False
+        self._velocity = None
         self._autoware_state = ""
         self._current_announce = ""
         self._pending_announce_list = []
@@ -112,6 +113,7 @@ class AnnounceControllerProperty():
         self._current_announce = message
 
     def sub_velocity(self, velocity):
+        self._velocity = velocity
         if velocity > 0 and self.is_auto_mode and self._in_driving_state:
             self._is_auto_running = True
         elif velocity < 0:
@@ -171,7 +173,7 @@ class AnnounceControllerProperty():
             if self._node.get_clock().now() - self._stop_reason_announce_time < Duration(seconds=5):
                 return
 
-            if shortest_stop_reason in ["ObstacleStop", "DetectionArea", "SurroundObstacleCheck", "BlindSpot", "BlockedByObstacles"]:
+            if shortest_stop_reason in ["ObstacleStop", "DetectionArea", "SurroundObstacleCheck", "BlindSpot", "BlockedByObstacles"] and self._velocity == 0:
                 self._in_stop_status = True
                 self.send_announce("obstacle_detect")
             elif shortest_stop_reason in ["StopLine", "Walkway", "Crosswalk", "MergeFromPrivateRoad"]:
