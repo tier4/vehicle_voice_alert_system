@@ -11,17 +11,18 @@ from autoware_hmi_msgs.srv import Announce
 # The higher the value, the higher the priority
 PRIORITY_DICT = {
     "emergency": 4,
-    "departure" : 4,
-    "stop" : 4,
+    "departure": 4,
+    "stop": 4,
     "restart_engage": 3,
     "obstacle_detect": 3,
     "in_emergency": 3,
-    "temporary_stop" : 2,
-    "turning_left" : 1,
-    "turning_right" : 1,
+    "temporary_stop": 2,
+    "turning_left": 1,
+    "turning_right": 1,
 }
 
-class AnnounceControllerProperty():
+
+class AnnounceControllerProperty:
     def __init__(self, node, autoware_state_interface=None):
         super(AnnounceControllerProperty, self).__init__()
         autoware_state_interface.set_autoware_state_callback(self.sub_autoware_state)
@@ -36,6 +37,7 @@ class AnnounceControllerProperty():
         self._is_auto_running = False
         self._in_driving_state = False
         self._in_emergency_state = False
+        self._velocity = None
         self._autoware_state = ""
         self._current_announce = ""
         self._pending_announce_list = []
@@ -45,11 +47,13 @@ class AnnounceControllerProperty():
         self._in_stop_status = False
         self._signal_announce_time = self._node.get_clock().now()
         self._stop_reason_announce_time = self._node.get_clock().now()
-        self._package_path = get_package_share_directory('vehicle_voice_alert_system') + "/resource/sound/"
-        self._check_playing_timer = self._node.create_timer(
-            1,
-            self.check_playing_callback)
-        self._srv = self._node.create_service(Announce, '/api/vehicle_voice/set/announce', self.announce_service)
+        self._package_path = (
+            get_package_share_directory("vehicle_voice_alert_system") + "/resource/sound/"
+        )
+        self._check_playing_timer = self._node.create_timer(1, self.check_playing_callback)
+        self._srv = self._node.create_service(
+            Announce, "/api/vehicle_voice/set/announce", self.announce_service
+        )
 
     def announce_service(self, request, response):
         try:
@@ -112,6 +116,7 @@ class AnnounceControllerProperty():
         self._current_announce = message
 
     def sub_velocity(self, velocity):
+        self._velocity = velocity
         if velocity > 0 and self.is_auto_mode and self._in_driving_state:
             self._is_auto_running = True
         elif velocity < 0:
@@ -120,7 +125,10 @@ class AnnounceControllerProperty():
     def sub_autoware_state(self, autoware_state):
         if autoware_state == "Driving" and not self._in_driving_state:
             self._in_driving_state = True
-        elif autoware_state in ["WaitingForRoute", "WaitingForEngage", "ArrivedGoal", "Planning"] and self._in_driving_state:
+        elif (
+            autoware_state in ["WaitingForRoute", "WaitingForEngage", "ArrivedGoal", "Planning"]
+            and self._in_driving_state
+        ):
             self.send_announce("stop")
             self._is_auto_running = False
             self._in_driving_state = False
@@ -171,10 +179,25 @@ class AnnounceControllerProperty():
             if self._node.get_clock().now() - self._stop_reason_announce_time < Duration(seconds=5):
                 return
 
-            if shortest_stop_reason in ["ObstacleStop", "DetectionArea", "SurroundObstacleCheck", "BlindSpot", "BlockedByObstacles"]:
+            if (
+                shortest_stop_reason
+                in [
+                    "ObstacleStop",
+                    "DetectionArea",
+                    "SurroundObstacleCheck",
+                    "BlindSpot",
+                    "BlockedByObstacles",
+                ]
+                and self._velocity == 0
+            ):
                 self._in_stop_status = True
                 self.send_announce("obstacle_detect")
-            elif shortest_stop_reason in ["StopLine", "Walkway", "Crosswalk", "MergeFromPrivateRoad"]:
+            elif shortest_stop_reason in [
+                "StopLine",
+                "Walkway",
+                "Crosswalk",
+                "MergeFromPrivateRoad",
+            ]:
                 self.send_announce("temporary_stop")
                 self._in_stop_status = True
             else:
