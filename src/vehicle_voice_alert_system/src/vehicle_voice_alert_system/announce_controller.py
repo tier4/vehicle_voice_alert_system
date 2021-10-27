@@ -13,7 +13,7 @@ PRIORITY_DICT = {
     "emergency": 4,
     "departure": 4,
     "stop": 4,
-    "restart_engage": 3,
+    "restart_engage": 4,
     "obstacle_detect": 3,
     "in_emergency": 3,
     "temporary_stop": 2,
