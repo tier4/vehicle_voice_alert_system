@@ -176,7 +176,9 @@ class AnnounceControllerProperty:
 
         # 音声の通知
         if shortest_stop_reason != "test" and shortest_distance > -1 and shortest_distance < 2:
-            if self._node.get_clock().now() - self._stop_reason_announce_time < Duration(seconds=5):
+            if self._node.get_clock().now() - self._stop_reason_announce_time < Duration(
+                seconds=20
+            ):
                 return
 
             if (
@@ -192,12 +194,16 @@ class AnnounceControllerProperty:
             ):
                 self._in_stop_status = True
                 self.send_announce("obstacle_detect")
-            elif shortest_stop_reason in [
-                "StopLine",
-                "Walkway",
-                "Crosswalk",
-                "MergeFromPrivateRoad",
-            ]:
+            elif (
+                shortest_stop_reason
+                in [
+                    "StopLine",
+                    "Walkway",
+                    "Crosswalk",
+                    "MergeFromPrivateRoad",
+                ]
+                and self._velocity == 0
+            ):
                 self.send_announce("temporary_stop")
                 self._in_stop_status = True
             else:
