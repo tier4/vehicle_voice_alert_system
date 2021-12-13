@@ -128,7 +128,9 @@ class AnnounceControllerProperty:
             autoware_state in ["WaitingForRoute", "WaitingForEngage", "ArrivedGoal", "Planning"]
             and self._in_driving_state
         ):
-            self.send_announce("stop")
+            if self.is_auto_mode:
+                # Skip annouce if is in manual driving
+                self.send_announce("stop")
             self._is_auto_running = False
             self._in_driving_state = False
         self._autoware_state = autoware_state
