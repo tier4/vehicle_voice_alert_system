@@ -16,7 +16,7 @@ package_name = "vehicle_voice_alert_system"
 
 setup(
     name=package_name,
-    version="0.0.0",
+    version="0.1.0",
     package_dir={"": "src"},
     packages=[package_name],
     data_files=[

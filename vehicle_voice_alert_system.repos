@@ -1,0 +1,5 @@
+repositories:
+  src/autoware_iv_msgs:
+    type: git
+    url: git@github.com:tier4/AutowareArchitectureProposal_msgs.git
+    version: main

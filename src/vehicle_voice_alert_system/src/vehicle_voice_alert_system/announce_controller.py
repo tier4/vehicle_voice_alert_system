@@ -4,7 +4,6 @@
 
 from simpleaudio import WaveObject
 from ament_index_python.packages import get_package_share_directory
-from autoware_external_api_msgs.srv import Engage
 from rclpy.duration import Duration
 from autoware_hmi_msgs.srv import Announce
 
