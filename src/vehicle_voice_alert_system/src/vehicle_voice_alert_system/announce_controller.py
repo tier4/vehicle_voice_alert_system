@@ -101,8 +101,8 @@ class AnnounceControllerProperty:
         self._wav_object = sound.play()
 
     def send_announce(self, message):
-        if not self.is_auto_mode:
-            self._node.get_logger().warning("is in manual mode, skip announce")
+        if self._autoware_state != "Driving":
+            self._node.get_logger().warning("The vehicle is not in driving state, do not announce")
             return
 
         priority = PRIORITY_DICT.get(message, 0)
