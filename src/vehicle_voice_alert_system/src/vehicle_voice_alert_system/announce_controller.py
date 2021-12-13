@@ -4,7 +4,6 @@
 
 from simpleaudio import WaveObject
 from ament_index_python.packages import get_package_share_directory
-from autoware_external_api_msgs.srv import Engage
 from rclpy.duration import Duration
 from autoware_hmi_msgs.srv import Announce
 
@@ -102,8 +101,8 @@ class AnnounceControllerProperty:
         self._wav_object = sound.play()
 
     def send_announce(self, message):
-        if not self.is_auto_mode:
-            self._node.get_logger().warning("is in manual mode, skip announce")
+        if self._autoware_state != "Driving":
+            self._node.get_logger().warning("The vehicle is not in driving state, do not announce")
             return
 
         priority = PRIORITY_DICT.get(message, 0)
@@ -129,7 +128,9 @@ class AnnounceControllerProperty:
             autoware_state in ["WaitingForRoute", "WaitingForEngage", "ArrivedGoal", "Planning"]
             and self._in_driving_state
         ):
-            self.send_announce("stop")
+            if self.is_auto_mode:
+                # Skip annouce if is in manual driving
+                self.send_announce("stop")
             self._is_auto_running = False
             self._in_driving_state = False
         self._autoware_state = autoware_state

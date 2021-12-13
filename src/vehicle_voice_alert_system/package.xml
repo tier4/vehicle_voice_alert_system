@@ -2,14 +2,13 @@
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
   <name>vehicle_voice_alert_system</name>
-  <version>0.0.0</version>
-  <description>The gms8 vehicle voice alert system</description>
+  <version>0.1.0</version>
+  <description>Vehicle voice alert system</description>
   <maintainer email="tkh.my.p@gmail.com">khtan</maintainer>
-  <license>TODO: License declaration</license>
+  <license>Apache License 2.0</license>
 
-  <test_depend>ament_copyright</test_depend>
-  <test_depend>ament_flake8</test_depend>
-  <test_depend>ament_pep257</test_depend>
+  <depend>autoware_api_msgs</depend>
+  <depend>autoware_hmi_msgs</depend>
 
   <export>
     <build_type>ament_python</build_type>
