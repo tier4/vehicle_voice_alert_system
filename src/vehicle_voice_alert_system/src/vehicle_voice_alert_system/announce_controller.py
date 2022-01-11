@@ -5,7 +5,7 @@
 from simpleaudio import WaveObject
 from ament_index_python.packages import get_package_share_directory
 from rclpy.duration import Duration
-from autoware_hmi_msgs.srv import Announce
+from tier4_hmi_msgs.srv import Announce
 
 # The higher the value, the higher the priority
 PRIORITY_DICT = {
@@ -57,6 +57,7 @@ class AnnounceControllerProperty:
     def announce_service(self, request, response):
         try:
             annouce_type = request.kind
+            self._node.get_logger().info("announce catch {} {}".format(str(annouce_type), str(self._is_auto_running)))
             if annouce_type == 1:
                 self.send_announce("departure")
             elif annouce_type == 2 and self._is_auto_running:

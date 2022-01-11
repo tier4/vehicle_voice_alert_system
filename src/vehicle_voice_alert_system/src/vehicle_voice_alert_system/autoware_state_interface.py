@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 from rclpy.duration import Duration
-from autoware_api_msgs.msg import AwapiAutowareStatus, AwapiVehicleStatus
+from tier4_api_msgs.msg import AwapiAutowareStatus, AwapiVehicleStatus
 
 
 class AutowareStateInterface:
@@ -73,6 +73,9 @@ class AutowareStateInterface:
             autoware_state = topic.autoware_state
             control_mode = topic.control_mode
             stop_reason = topic.stop_reason
+
+            self._node.get_logger().info("announce catch {}".format(autoware_state))
+
 
             if self._ignore_emergency_stoppped:
                 emergency_stopped = False
