@@ -74,9 +74,6 @@ class AutowareStateInterface:
             control_mode = topic.control_mode
             stop_reason = topic.stop_reason
 
-            self._node.get_logger().info("announce catch {}".format(autoware_state))
-
-
             if self._ignore_emergency_stoppped:
                 emergency_stopped = False
             else:
