@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 from rclpy.duration import Duration
-from autoware_api_msgs.msg import AwapiAutowareStatus, AwapiVehicleStatus
+from tier4_api_msgs.msg import AwapiAutowareStatus, AwapiVehicleStatus
 
 
 class AutowareStateInterface:
