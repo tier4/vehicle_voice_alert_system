@@ -194,7 +194,7 @@ class AnnounceControllerProperty:
                 and self._velocity == 0
             ):
                 self._in_stop_status = True
-                self.send_announce("obstacle_detect")
+                self.send_announce("obstacle_stop")
                 self._stop_reason_announce_time = self._node.get_clock().now()
             elif shortest_stop_reason in [
                 "StopLine",
