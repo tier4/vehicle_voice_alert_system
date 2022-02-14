@@ -13,6 +13,7 @@ PRIORITY_DICT = {
     "departure": 4,
     "stop": 4,
     "restart_engage": 4,
+    "obstacle_stop": 3,
     "obstacle_detect": 3,
     "in_emergency": 3,
     "temporary_stop": 2,
@@ -164,7 +165,7 @@ class AnnounceControllerProperty:
     # 停止する予定を取得
     def sub_stop_reason(self, stop_reason):
         stop_reasons = stop_reason.stop_reasons
-        shortest_stop_reason = "test"
+        shortest_stop_reason = ""
         shortest_distance = -1
         for stop_reason in stop_reasons:
             dist_to_stop_pose = -1
@@ -176,7 +177,7 @@ class AnnounceControllerProperty:
                 shortest_stop_reason = stop_reason.reason
 
         # 音声の通知
-        if shortest_stop_reason != "test" and shortest_distance > -1 and shortest_distance < 2:
+        if shortest_stop_reason != "" and shortest_distance > -1 and shortest_distance < 2:
             if self._node.get_clock().now() - self._stop_reason_announce_time < Duration(
                 seconds=20
             ):
@@ -194,7 +195,7 @@ class AnnounceControllerProperty:
                 and self._velocity == 0
             ):
                 self._in_stop_status = True
-                self.send_announce("obstacle_detect")
+                self.send_announce("obstacle_stop")
                 self._stop_reason_announce_time = self._node.get_clock().now()
             elif shortest_stop_reason in [
                 "StopLine",
