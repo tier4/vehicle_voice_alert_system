@@ -102,10 +102,6 @@ class AnnounceControllerProperty:
         self._wav_object = sound.play()
 
     def send_announce(self, message):
-        if self._autoware_state != "Driving":
-            self._node.get_logger().warning("The vehicle is not in driving state, do not announce")
-            return
-
         priority = PRIORITY_DICT.get(message, 0)
         previous_priority = PRIORITY_DICT.get(self._current_announce, 0)
 
