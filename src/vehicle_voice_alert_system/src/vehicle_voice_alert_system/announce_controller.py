@@ -63,7 +63,7 @@ class AnnounceControllerProperty:
                 self.send_announce("departure")
             elif annouce_type == 2 and self._is_auto_running:
                 if self._node.get_clock().now() - self._start_request_announce_time > Duration(
-                    seconds=10
+                    seconds=5
                 ):
                     self._start_request_announce_time = self._node.get_clock().now()
                     self.send_announce("restart_engage")
