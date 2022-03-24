@@ -47,6 +47,7 @@ class AnnounceControllerProperty:
         self._in_stop_status = False
         self._signal_announce_time = self._node.get_clock().now()
         self._stop_reason_announce_time = self._node.get_clock().now()
+        self._start_request_announce_time = self._node.get_clock().now()
         self._package_path = (
             get_package_share_directory("vehicle_voice_alert_system") + "/resource/sound/"
         )
@@ -61,7 +62,13 @@ class AnnounceControllerProperty:
             if annouce_type == 1:
                 self.send_announce("departure")
             elif annouce_type == 2 and self._is_auto_running:
-                self.send_announce("restart_engage")
+                if self._node.get_clock().now() - self._start_request_announce_time > Duration(
+                    seconds=5
+                ):
+                    self._start_request_announce_time = self._node.get_clock().now()
+                    self.send_announce("restart_engage")
+                else:
+                    self._node.get_logger().warning("skip announce restart engage")
 
             if self._wav_object:
                 if self._wav_object.is_playing():
@@ -115,8 +122,6 @@ class AnnounceControllerProperty:
         self._velocity = velocity
         if velocity > 0 and self.is_auto_mode and self._in_driving_state:
             self._is_auto_running = True
-        elif velocity < 0:
-            self._is_auto_running = False
 
     def sub_autoware_state(self, autoware_state):
         if autoware_state == "Driving" and not self._in_driving_state:
