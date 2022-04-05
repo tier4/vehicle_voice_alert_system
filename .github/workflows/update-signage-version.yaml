@@ -1,0 +1,32 @@
+name: update-vehicle-voice-alert-system-version
+
+on:
+  push:
+    branches:
+      - beta/**
+
+jobs:
+  update-vehicle-voice-alert-system-version:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Update vehicle_voice_alert_system version
+        working-directory: vehicle_voice_alert_system_version/resource
+        run: |
+          version=$(echo ${{ github.ref }} | sed -e "s/.*\/v//")
+          cat version.json | jq .version=\"$version\" > version.json.temp
+          mv version.json.temp version.json
+
+      - name: Commit and push
+        run: |
+          if ! git diff --exit-code --quiet
+          then
+            git config user.name github-actions
+            git config user.email github-actions@github.com
+            git add .
+            git commit -m "Update vehicle voice alert system version"
+            git push
+          fi

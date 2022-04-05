@@ -41,6 +41,7 @@
 **PR Author should check the checkboxes below before merging.**
 
 - [ ] All open points are addressed and tracked via issues or tickets
+- [ ] Write release notes
 
 ## CI Checks
 
