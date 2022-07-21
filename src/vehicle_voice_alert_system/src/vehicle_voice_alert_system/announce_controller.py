@@ -70,7 +70,7 @@ class AnnounceControllerProperty:
                 else:
                     self._node.get_logger().warning("skip announce restart engage")
                 # To reset the stop reason announce, so that it can announce if vehicle reengage within 20s
-                self._stop_reason_announce_time = self._node.get_clock().now()-Duration(seconds=30)
+                self._stop_reason_announce_time = self._node.get_clock().now()-Duration(seconds=20)
             if self._wav_object:
                 if self._wav_object.is_playing():
                     self._wav_object.wait_done()
