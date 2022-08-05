@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 # This Python file uses the following encoding: utf-8
 
+from os import path
 from simpleaudio import WaveObject
 from ament_index_python.packages import get_package_share_directory
 from rclpy.duration import Duration
@@ -48,6 +49,19 @@ class AnnounceControllerProperty:
         self._signal_announce_time = self._node.get_clock().now()
         self._stop_reason_announce_time = self._node.get_clock().now()
         self._start_request_announce_time = self._node.get_clock().now()
+
+        self._node.declare_parameter("manual_driving_bgm", False)
+        self._manual_driving_bgm = (
+            self._node.get_parameter("manual_driving_bgm").get_parameter_value().bool_value
+        )
+
+        if path.exists("~/bgm.wav"):
+            self._manual_driving_bgm_file = "~/bgm.wav"
+        elif path.exists("/home/ubuntu/bgm.wav"):
+            self._manual_driving_bgm_file = "/home/ubuntu/bgm.wav"
+        else:
+            self._manual_driving_bgm_file = ""
+
         self._package_path = (
             get_package_share_directory("vehicle_voice_alert_system") + "/resource/sound/"
         )
@@ -82,6 +96,11 @@ class AnnounceControllerProperty:
             if self._in_driving_state and not self._in_emergency_state:
                 if not self._music_object or not self._music_object.is_playing():
                     sound = WaveObject.from_wave_file(self._package_path + "running_music.wav")
+                    self._music_object = sound.play()
+            elif self._manual_driving_bgm and not self.is_auto_mode and (self._velocity > 0 or self._velocity < 0):
+                sound_file = self._manual_driving_bgm_file if self._manual_driving_bgm_file else self._package_path + "running_music.wav"
+                if not self._music_object or not self._music_object.is_playing():
+                    sound = WaveObject.from_wave_file(sound_file)
                     self._music_object = sound.play()
             else:
                 if self._music_object and self._music_object.is_playing():
