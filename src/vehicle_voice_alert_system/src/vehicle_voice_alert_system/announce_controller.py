@@ -55,6 +55,11 @@ class AnnounceControllerProperty:
             self._node.get_parameter("manual_driving_bgm").get_parameter_value().bool_value
         )
 
+        self._node.declare_parameter("driving_velocity_threshold", 0.2)
+        self._driving_velocity_threshold = (
+            self._node.get_parameter("driving_velocity_threshold").get_parameter_value().double_value
+        )
+
         self._package_path = (
             get_package_share_directory("vehicle_voice_alert_system") + "/resource/sound/"
         )
@@ -96,7 +101,7 @@ class AnnounceControllerProperty:
                 if not self._music_object or not self._music_object.is_playing():
                     sound = WaveObject.from_wave_file(self._running_bgm_file)
                     self._music_object = sound.play()
-            elif self._manual_driving_bgm and not self.is_auto_mode and (self._velocity > 0 or self._velocity < 0):
+            elif self._manual_driving_bgm and not self.is_auto_mode and (self._velocity > self._driving_velocity_threshold or self._velocity < - self._driving_velocity_threshold):
                 if not self._music_object or not self._music_object.is_playing():
                     sound = WaveObject.from_wave_file(self._running_bgm_file)
                     self._music_object = sound.play()
