@@ -1,7 +1,10 @@
 <?xml version="1.0"?>
 <launch>
   <arg name="ignore_emergency_stoppped" default="false" />
+  <arg name="manual_driving_bgm" default="true" description="param for enable bgm to play when manual driving"/>
+  <arg name="driving_velocity_threshold" default="0.2" description="param for the threshold to play the running bgm"/>
   <node pkg="vehicle_voice_alert_system" exec="vehicle_voice_alert_system"  output="screen">
     <param name="ignore_emergency_stoppped" value="$(var ignore_emergency_stoppped)" />
+    <param name="manual_driving_bgm" value="$(var manual_driving_bgm)" />
   </node>
 </launch>
