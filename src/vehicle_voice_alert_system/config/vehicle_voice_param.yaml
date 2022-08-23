@@ -1,0 +1,6 @@
+vehicle_voice_alert_system:
+  ros__parameters:
+    ignore_emergency_stoppped: false
+    manual_driving_bgm: true # param for enable bgm to play when manual driving
+    driving_velocity_threshold: 0.2 # param for the threshold to play the running bgm
+    driving_bgm_timespan: 0.0 # Param for timespan between the bgm playing 

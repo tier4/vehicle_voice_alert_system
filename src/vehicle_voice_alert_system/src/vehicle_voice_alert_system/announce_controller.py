@@ -49,6 +49,7 @@ class AnnounceControllerProperty:
         self._signal_announce_time = self._node.get_clock().now()
         self._stop_reason_announce_time = self._node.get_clock().now()
         self._start_request_announce_time = self._node.get_clock().now()
+        self._bgm_announce_time = self._node.get_clock().now()
 
         self._node.declare_parameter("manual_driving_bgm", False)
         self._manual_driving_bgm = (
@@ -58,6 +59,11 @@ class AnnounceControllerProperty:
         self._node.declare_parameter("driving_velocity_threshold", 0.2)
         self._driving_velocity_threshold = (
             self._node.get_parameter("driving_velocity_threshold").get_parameter_value().double_value
+        )
+
+        self._node.declare_parameter("driving_bgm_timespan", 0.0)
+        self._driving_bgm_timespan = (
+            self._node.get_parameter("driving_bgm_timespan").get_parameter_value().double_value
         )
 
         self._package_path = (
@@ -97,6 +103,9 @@ class AnnounceControllerProperty:
 
     def process_running_music(self):
         try:
+            if self._node.get_clock().now() - self._bgm_announce_time < Duration(seconds=self._driving_bgm_timespan):
+                return
+
             if self._in_driving_state and not self._in_emergency_state:
                 if not self._music_object or not self._music_object.is_playing():
                     sound = WaveObject.from_wave_file(self._running_bgm_file)
@@ -108,6 +117,7 @@ class AnnounceControllerProperty:
             else:
                 if self._music_object and self._music_object.is_playing():
                     self._music_object.stop()
+            self._bgm_announce_time = self._node.get_clock().now()
         except Exception as e:
             self._node.get_logger().error("not able to check the pending playing list: " + str(e))
 
