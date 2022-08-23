@@ -24,6 +24,7 @@ setup(
         ("share/" + package_name + "/resource/sound", package_files("resource/sound")),
         ("share/" + package_name, ["package.xml"]),
         ("share/" + package_name + "/launch", ["launch/vehicle_voice_alert_system.launch.xml"]),
+        ("share/" + package_name + "/config", ["config/vehicle_voice_param.yaml"]),
     ],
     install_requires=["setuptools"],
     zip_safe=True,
