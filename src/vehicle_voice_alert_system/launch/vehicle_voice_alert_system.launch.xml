@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <launch>
-  <arg name="ignore_emergency_stoppped" default="false" />
+  <arg name="vehicle_voice_param" default="$(find-pkg-share vehicle_voice_alert_system)/config/vehicle_voice_param.yaml" />
   <node pkg="vehicle_voice_alert_system" exec="vehicle_voice_alert_system"  output="screen">
-    <param name="ignore_emergency_stoppped" value="$(var ignore_emergency_stoppped)" />
+    <param from="$(var vehicle_voice_param)"/>
   </node>
 </launch>
