@@ -5,5 +5,13 @@ repositories:
     version: tier4/universe
   src/auto_msgs:
     type: git
+    url: https://github.com/tier4/autoware_auto_msgs.git
+    version: tier4/main
+  src/autoware_msgs:
+    type: git
     url: https://github.com/autowarefoundation/autoware_msgs.git
+    version: main
+  src/autoware_adapi_msgs:
+    type: git
+    url: https://github.com/autowarefoundation/autoware_adapi_msgs.git
     version: main
