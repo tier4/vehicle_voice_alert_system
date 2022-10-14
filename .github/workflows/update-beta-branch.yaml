@@ -1,5 +1,8 @@
 name: update beta branch
 
+on:
+  workflow_dispatch:
+
 env:
   SYNC_BRANCH_PREFIX: update-beta-branch
 
