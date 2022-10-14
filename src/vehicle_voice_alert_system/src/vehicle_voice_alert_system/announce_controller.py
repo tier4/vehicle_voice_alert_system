@@ -82,10 +82,10 @@ class AnnounceControllerProperty:
 
     def announce_service(self, request, response):
         try:
-            annouce_type = request.kind
-            if annouce_type == 1:
+            announce_type = request.kind
+            if announce_type == 1:
                 self.send_announce("departure")
-            elif annouce_type == 2 and self._is_auto_running:
+            elif announce_type == 2 and self._is_auto_running:
                 if self._node.get_clock().now() - self._start_request_announce_time > Duration(
                     seconds=5
                 ):
@@ -99,7 +99,7 @@ class AnnounceControllerProperty:
                 if self._wav_object.is_playing():
                     self._wav_object.wait_done()
         except Exception as e:
-            self._node.get_logger().error("not able to play the annoucen, ERROR: {}".format(str(e)))
+            self._node.get_logger().error("not able to play the announce, ERROR: {}".format(str(e)))
         return response
 
     def process_running_music(self):
@@ -164,7 +164,7 @@ class AnnounceControllerProperty:
             and self._in_driving_state
         ):
             if self.is_auto_mode:
-                # Skip annouce if is in manual driving
+                # Skip announce if is in manual driving
                 self.send_announce("stop")
             self._is_auto_running = False
             self._in_driving_state = False
