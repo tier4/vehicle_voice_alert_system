@@ -5,7 +5,7 @@
     <param from="$(var vehicle_voice_param)"/>
   </node>
 
-  <include file="$(find-pkg-share proto_boot_shutdown_interface)/launch/proto_boot_shutdown.launch.xml">
+  <include file="$(find-pkg-share boot_shutdown_interface)/launch/boot_shutdown.launch.xml">
     <arg name="ecu_name" value="signage1" />
   </include>
 </launch>
