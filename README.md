@@ -15,12 +15,17 @@ refer to here
 
 <https://autowarefoundation.github.io/autoware-documentation/main/installation/>
 
-### setup
+### requried library
+- simpleaudio
+```bash
+sudo pip3 install simpleaudio
+```
+
+## build
 
 ```bash
 cd vehicle_voice_alert_ystem
-source {AUTOWARE_PATH}/install/setup.bash
-bash setup.sh
+colcon build
 ```
 
 ## start
