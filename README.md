@@ -1,24 +1,31 @@
 # Vehicle Voice Alert System
 
-## 確認環境
+## Tested environments
 
-- Ubuntu20.04
-- Python3.5
-- ros2 galactic
+| OS           | python     | ros           |
+| ------------ | ---------- | ------------- |
+| Ubuntu 20.04 | python3.8  | ros2 galactic |
+| Ubuntu 22.04 | python3.10 | ros2 humble   |
 
 ## setup
 
 ### Install Autoware
 
-下記参照
-<https://github.com/tier4/AutowareArchitectureProposal.proj>
+refer to here
 
-### setup FOA
+<https://autowarefoundation.github.io/autoware-documentation/main/installation/>
+
+### requried library
+- simpleaudio
+```bash
+sudo pip3 install simpleaudio
+```
+
+## build
 
 ```bash
 cd vehicle_voice_alert_ystem
-source {AUTOWARE_PATH}/install/setup.bash
-bash setup.sh
+colcon build
 ```
 
 ## start
@@ -37,4 +44,4 @@ colcon build
 
 ## License
 
-音声・音楽：魔王魂、jtalk
+voice and music：魔王魂、jtalk
