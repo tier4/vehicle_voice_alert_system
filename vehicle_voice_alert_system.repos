@@ -15,3 +15,7 @@ repositories:
     type: git
     url: https://github.com/autowarefoundation/autoware_adapi_msgs.git
     version: main
+  src/boot_shutdown_tools:
+    type: git
+    url: https://github.com/tier4/boot_shutdown_tools.git
+    version: main
