@@ -5,3 +5,4 @@ vehicle_voice_alert_system:
     driving_velocity_threshold: 0.2 # param for the threshold to play the running bgm
     driving_bgm_timespan: 0.0 # Param for timespan between the bgm playing 
     mute_timeout: 5.0 # Param for make the restart engage and stop reason to mute for a period after the announce
+    primary_voice_folder_path: ~/vehicle_sound # Param to set the voice folder path, sound file will be used if it exist in this folder

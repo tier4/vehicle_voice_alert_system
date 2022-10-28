@@ -71,14 +71,19 @@ class AnnounceControllerProperty:
             self._node.get_parameter("mute_timeout").get_parameter_value().double_value
         )
 
-        self._package_path = (
-            get_package_share_directory("vehicle_voice_alert_system") + "/resource/sound/"
+        self._node.declare_parameter("primary_voice_folder_path", "")
+        self._primary_voice_folder_path = (
+            self._node.get_parameter("primary_voice_folder_path").get_parameter_value().string_value
         )
 
-        if path.exists(path.expanduser("~") + "/bgm.wav"):
-            self._running_bgm_file = path.expanduser("~") + "/bgm.wav"
+        self._package_path = (
+            get_package_share_directory("vehicle_voice_alert_system") + "/resource/sound"
+        )
+
+        if path.exists(self._primary_voice_folder_path + "/running_music.wav"):
+            self._running_bgm_file = self._primary_voice_folder_path + "/running_music.wav"
         else:
-            self._running_bgm_file = self._package_path + "running_music.wav"
+            self._running_bgm_file = self._package_path + "/running_music.wav"
 
         self._check_playing_timer = self._node.create_timer(1, self.check_playing_callback)
         self._srv = self._node.create_service(
@@ -143,7 +148,10 @@ class AnnounceControllerProperty:
             self._node.get_logger().error("not able to check the current playing: " + str(e))
 
     def play_sound(self, message):
-        sound = WaveObject.from_wave_file(self._package_path + message + ".wav")
+        if path.exists("{}/{}.wav".format(self._primary_voice_folder_path, message)):
+            sound = WaveObject.from_wave_file("{}/{}.wav".format(self._primary_voice_folder_path, message))
+        else:
+            sound = WaveObject.from_wave_file("{}/{}.wav".format(self._package_path, message))
         self._wav_object = sound.play()
 
     def send_announce(self, message):
