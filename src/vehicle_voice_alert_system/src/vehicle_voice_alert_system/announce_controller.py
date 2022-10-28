@@ -65,10 +65,16 @@ class AnnounceControllerProperty:
             self._node.get_parameter("driving_bgm_timespan").get_parameter_value().double_value
         )
 
-        self._node.declare_parameter("mute_timeout", 5.0)
-        self._mute_timeout = (
-            self._node.get_parameter("mute_timeout").get_parameter_value().double_value
+        self._node.declare_parameter("mute_timeout.restart_engage", 0.0)
+        self._mute_restart_engage_timeout = (
+            self._node.get_parameter("mute_timeout.restart_engage").get_parameter_value().double_value
         )
+        self._node.declare_parameter("mute_timeout.stop_reason", 0.0)
+        self._mute_stop_reason_timeout = (
+            self._node.get_parameter("mute_timeout.stop_reason").get_parameter_value().double_value
+        )
+        self._node.get_logger().error(str(self._mute_restart_engage_timeout))
+        self._node.get_logger().error(str(self._mute_stop_reason_timeout))
 
         self._node.declare_parameter("primary_voice_folder_path", "")
         self._primary_voice_folder_path = (
@@ -96,7 +102,7 @@ class AnnounceControllerProperty:
                 self.send_announce("departure")
             elif announce_type == 2 and self._is_auto_running:
                 if self._node.get_clock().now() - self._start_request_announce_time > Duration(
-                    seconds=self._mute_timeout
+                    seconds=self._mute_restart_engage_timeout
                 ):
                     self._start_request_announce_time = self._node.get_clock().now()
                     self.send_announce("restart_engage")
@@ -229,7 +235,7 @@ class AnnounceControllerProperty:
         # 音声の通知
         if shortest_stop_reason != "" and shortest_distance > -1 and shortest_distance < 2:
             if self._node.get_clock().now() - self._stop_reason_announce_time < Duration(
-                seconds=self._mute_timeout
+                seconds=self._mute_stop_reason_timeout
             ):
                 return
 
