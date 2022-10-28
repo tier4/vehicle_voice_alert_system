@@ -3,10 +3,10 @@ vehicle_voice_alert_system:
     ignore_emergency_stoppped: false
     manual_driving_bgm: false # param for enable bgm to play when manual driving
     driving_velocity_threshold: 0.2 # param for the threshold to play the running bgm
-    driving_bgm_timespan: 0.0 # Param for timespan between the bgm playing 
     mute_timeout: # Param for to mute for a period after the announce
       restart_engage: 5.0
       stop_reason: 20.0
       turn_signal: 5.0
       in_emergency: 30.0
+      driving_bgm: 0.0
     primary_voice_folder_path: /opt/vehicle_sound # Param to set the voice folder path, sound file will be used if it exist in this folder

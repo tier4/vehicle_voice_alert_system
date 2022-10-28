@@ -60,22 +60,16 @@ class AnnounceControllerProperty:
             self._node.get_parameter("driving_velocity_threshold").get_parameter_value().double_value
         )
 
-        self._node.declare_parameter("driving_bgm_timespan", 0.0)
-        self._driving_bgm_timespan = (
-            self._node.get_parameter("driving_bgm_timespan").get_parameter_value().double_value
-        )
-
         self._node.declare_parameter("mute_timeout.restart_engage", 0.0)
         self._node.declare_parameter("mute_timeout.stop_reason", 0.0)
         self._node.declare_parameter("mute_timeout.turn_signal", 0.0)
         self._node.declare_parameter("mute_timeout.in_emergency", 0.0)
+        self._node.declare_parameter("mute_timeout.driving_bgm", 0.0)
         mute_timeout_prefix = self._node.get_parameters_by_prefix("mute_timeout")
 
         self._mute_timeout = {}
         for key in mute_timeout_prefix.keys():
             self._mute_timeout[key] = mute_timeout_prefix[key].get_parameter_value().double_value
-
-        self._node.get_logger().error(str(self._mute_timeout))
 
         self._node.declare_parameter("primary_voice_folder_path", "")
         self._primary_voice_folder_path = (
@@ -110,7 +104,7 @@ class AnnounceControllerProperty:
                 else:
                     self._node.get_logger().warning("skip announce restart engage")
                 # To reset the stop reason announce, so that it can announce if vehicle reengage
-                self._stop_reason_announce_time = self._node.get_clock().now()-Duration(seconds=self._mute_stop_reason_timeout)
+                self._stop_reason_announce_time = self._node.get_clock().now()-Duration(seconds=self._mute_timeout["restart_engage"])
             if self._wav_object:
                 if self._wav_object.is_playing():
                     self._wav_object.wait_done()
@@ -120,7 +114,7 @@ class AnnounceControllerProperty:
 
     def process_running_music(self):
         try:
-            if self._node.get_clock().now() - self._bgm_announce_time < Duration(seconds=self._driving_bgm_timespan):
+            if self._node.get_clock().now() - self._bgm_announce_time < Duration(seconds=self._mute_timeout["driving_bgm"]):
                 return
 
             if self._in_driving_state and not self._in_emergency_state:
