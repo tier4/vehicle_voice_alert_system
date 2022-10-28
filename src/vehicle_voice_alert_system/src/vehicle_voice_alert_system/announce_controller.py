@@ -66,6 +66,11 @@ class AnnounceControllerProperty:
             self._node.get_parameter("driving_bgm_timespan").get_parameter_value().double_value
         )
 
+        self._node.declare_parameter("mute_timeout", 5.0)
+        self._mute_timeout = (
+            self._node.get_parameter("mute_timeout").get_parameter_value().double_value
+        )
+
         self._package_path = (
             get_package_share_directory("vehicle_voice_alert_system") + "/resource/sound/"
         )
@@ -87,7 +92,7 @@ class AnnounceControllerProperty:
                 self.send_announce("departure")
             elif announce_type == 2 and self._is_auto_running:
                 if self._node.get_clock().now() - self._start_request_announce_time > Duration(
-                    seconds=5
+                    seconds=self._mute_timeout
                 ):
                     self._start_request_announce_time = self._node.get_clock().now()
                     self.send_announce("restart_engage")
@@ -217,7 +222,7 @@ class AnnounceControllerProperty:
         # 音声の通知
         if shortest_stop_reason != "" and shortest_distance > -1 and shortest_distance < 2:
             if self._node.get_clock().now() - self._stop_reason_announce_time < Duration(
-                seconds=20
+                seconds=self._mute_timeout
             ):
                 return
 
