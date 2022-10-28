@@ -7,7 +7,6 @@
   <maintainer email="tkh.my.p@gmail.com">khtan</maintainer>
   <license>Apache License 2.0</license>
 
-  <exec_depend>boot_shutdown_interface</exec_depend>
   <depend>rclpy</depend>
   <depend>tier4_api_msgs</depend>
   <depend>tier4_hmi_msgs</depend>
