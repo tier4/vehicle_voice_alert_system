@@ -66,21 +66,16 @@ class AnnounceControllerProperty:
         )
 
         self._node.declare_parameter("mute_timeout.restart_engage", 0.0)
-        self._mute_restart_engage_timeout = (
-            self._node.get_parameter("mute_timeout.restart_engage").get_parameter_value().double_value
-        )
         self._node.declare_parameter("mute_timeout.stop_reason", 0.0)
-        self._mute_stop_reason_timeout = (
-            self._node.get_parameter("mute_timeout.stop_reason").get_parameter_value().double_value
-        )
         self._node.declare_parameter("mute_timeout.turn_signal", 0.0)
-        self._mute_turn_signal_timeout = (
-            self._node.get_parameter("mute_timeout.turn_signal").get_parameter_value().double_value
-        )
         self._node.declare_parameter("mute_timeout.in_emergency", 0.0)
-        self._mute_in_emergency_timeout = (
-            self._node.get_parameter("mute_timeout.in_emergency").get_parameter_value().double_value
-        )
+        mute_timeout_prefix = self._node.get_parameters_by_prefix("mute_timeout")
+
+        self._mute_timeout = {}
+        for key in mute_timeout_prefix.keys():
+            self._mute_timeout[key] = mute_timeout_prefix[key].get_parameter_value().double_value
+
+        self._node.get_logger().error(str(self._mute_timeout))
 
         self._node.declare_parameter("primary_voice_folder_path", "")
         self._primary_voice_folder_path = (
@@ -108,7 +103,7 @@ class AnnounceControllerProperty:
                 self.send_announce("departure")
             elif announce_type == 2 and self._is_auto_running:
                 if self._node.get_clock().now() - self._start_request_announce_time > Duration(
-                    seconds=self._mute_restart_engage_timeout
+                    seconds=self._mute_timeout["restart_engage"]
                 ):
                     self._start_request_announce_time = self._node.get_clock().now()
                     self.send_announce("restart_engage")
@@ -203,12 +198,12 @@ class AnnounceControllerProperty:
         elif emergency_stopped and self._in_emergency_state and not self._in_stop_status:
             if not self._emergency_trigger_time:
                 self._emergency_trigger_time = self._node.get_clock().now().to_msg().sec
-            elif self._node.get_clock().now().to_msg().sec - self._emergency_trigger_time > Duration(seconds=self._mute_in_emergency_timeout):
+            elif self._node.get_clock().now().to_msg().sec - self._emergency_trigger_time > Duration(seconds=self._mute_timeout["in_emergency"]):
                 self.send_announce("in_emergency")
                 self._emergency_trigger_time = 0
 
     def check_turn_signal(self, turn_signal):
-        if self._node.get_clock().now() - self._signal_announce_time < Duration(seconds=self._mute_turn_signal_timeout):
+        if self._node.get_clock().now() - self._signal_announce_time < Duration(seconds=self._mute_timeout["turn_signal"]):
             return
         elif self._in_emergency_state or self._in_stop_status:
             return
@@ -241,7 +236,7 @@ class AnnounceControllerProperty:
         # 音声の通知
         if shortest_stop_reason != "" and shortest_distance > -1 and shortest_distance < 2:
             if self._node.get_clock().now() - self._stop_reason_announce_time < Duration(
-                seconds=self._mute_stop_reason_timeout
+                seconds=self._mute_timeout["stop_reason"]
             ):
                 return
 
