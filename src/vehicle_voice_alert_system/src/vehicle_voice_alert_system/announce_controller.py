@@ -15,7 +15,6 @@ PRIORITY_DICT = {
     "stop": 4,
     "restart_engage": 4,
     "obstacle_stop": 3,
-    "obstacle_detect": 3,
     "in_emergency": 3,
     "temporary_stop": 2,
     "turning_left": 1,
