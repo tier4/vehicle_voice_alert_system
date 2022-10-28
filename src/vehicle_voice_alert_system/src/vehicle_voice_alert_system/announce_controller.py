@@ -73,8 +73,14 @@ class AnnounceControllerProperty:
         self._mute_stop_reason_timeout = (
             self._node.get_parameter("mute_timeout.stop_reason").get_parameter_value().double_value
         )
-        self._node.get_logger().error(str(self._mute_restart_engage_timeout))
-        self._node.get_logger().error(str(self._mute_stop_reason_timeout))
+        self._node.declare_parameter("mute_timeout.turn_signal", 0.0)
+        self._mute_turn_signal_timeout = (
+            self._node.get_parameter("mute_timeout.turn_signal").get_parameter_value().double_value
+        )
+        self._node.declare_parameter("mute_timeout.in_emergency", 0.0)
+        self._mute_in_emergency_timeout = (
+            self._node.get_parameter("mute_timeout.in_emergency").get_parameter_value().double_value
+        )
 
         self._node.declare_parameter("primary_voice_folder_path", "")
         self._primary_voice_folder_path = (
@@ -108,8 +114,8 @@ class AnnounceControllerProperty:
                     self.send_announce("restart_engage")
                 else:
                     self._node.get_logger().warning("skip announce restart engage")
-                # To reset the stop reason announce, so that it can announce if vehicle reengage within 20s
-                self._stop_reason_announce_time = self._node.get_clock().now()-Duration(seconds=20)
+                # To reset the stop reason announce, so that it can announce if vehicle reengage
+                self._stop_reason_announce_time = self._node.get_clock().now()-Duration(seconds=self._mute_stop_reason_timeout)
             if self._wav_object:
                 if self._wav_object.is_playing():
                     self._wav_object.wait_done()
@@ -197,12 +203,12 @@ class AnnounceControllerProperty:
         elif emergency_stopped and self._in_emergency_state and not self._in_stop_status:
             if not self._emergency_trigger_time:
                 self._emergency_trigger_time = self._node.get_clock().now().to_msg().sec
-            elif self._node.get_clock().now().to_msg().sec - self._emergency_trigger_time > 30:
+            elif self._node.get_clock().now().to_msg().sec - self._emergency_trigger_time > Duration(seconds=self._mute_in_emergency_timeout):
                 self.send_announce("in_emergency")
                 self._emergency_trigger_time = 0
 
     def check_turn_signal(self, turn_signal):
-        if self._node.get_clock().now() - self._signal_announce_time < Duration(seconds=5):
+        if self._node.get_clock().now() - self._signal_announce_time < Duration(seconds=self._mute_turn_signal_timeout):
             return
         elif self._in_emergency_state or self._in_stop_status:
             return
