@@ -41,7 +41,7 @@ class AnnounceControllerProperty:
         self._autoware_state = ""
         self._current_announce = ""
         self._pending_announce_list = []
-        self._emergency_trigger_time = 0
+        self._emergency_trigger_time = self._node.get_clock().now()
         self._wav_object = None
         self._music_object = None
         self._in_stop_status = False
@@ -187,14 +187,13 @@ class AnnounceControllerProperty:
         if emergency_stopped and not self._in_emergency_state:
             self.send_announce("emergency")
             self._in_emergency_state = True
+            self._emergency_trigger_time = self._node.get_clock().now()
         elif not emergency_stopped and self._in_emergency_state:
             self._in_emergency_state = False
         elif emergency_stopped and self._in_emergency_state and not self._in_stop_status:
-            if not self._emergency_trigger_time:
-                self._emergency_trigger_time = self._node.get_clock().now().to_msg().sec
-            elif self._node.get_clock().now().to_msg().sec - self._emergency_trigger_time > Duration(seconds=self._mute_timeout["in_emergency"]):
+            if self._node.get_clock().now() - self._emergency_trigger_time > Duration(seconds=self._mute_timeout["in_emergency"]):
                 self.send_announce("in_emergency")
-                self._emergency_trigger_time = 0
+                self._emergency_trigger_time = self._node.get_clock().now()
 
     def check_turn_signal(self, turn_signal):
         if self._node.get_clock().now() - self._signal_announce_time < Duration(seconds=self._mute_timeout["turn_signal"]):
