@@ -187,6 +187,7 @@ class AnnounceControllerProperty:
         if emergency_stopped and not self._in_emergency_state:
             self.send_announce("emergency")
             self._in_emergency_state = True
+            self._emergency_trigger_time = self._node.get_clock().now()
         elif not emergency_stopped and self._in_emergency_state:
             self._in_emergency_state = False
         elif emergency_stopped and self._in_emergency_state and not self._in_stop_status:
