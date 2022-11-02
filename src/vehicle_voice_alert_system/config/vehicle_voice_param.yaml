@@ -9,4 +9,4 @@ vehicle_voice_alert_system:
       turn_signal: 5.0
       in_emergency: 30.0
       driving_bgm: 0.0
-    skip_default_voice: true # Param for skip playing default voice, if the voice is not found in the primary_voice_folder_path
+    skip_default_voice: false # Param for skip playing default voice, if the voice is not found in the primary_voice_folder_path
