@@ -84,9 +84,10 @@ class AnnounceControllerProperty:
             get_package_share_directory("vehicle_voice_alert_system") + "/resource/sound"
         )
 
+        self._running_bgm_file = ""
         if path.exists(self._primary_voice_folder_path + "/running_music.wav"):
             self._running_bgm_file = self._primary_voice_folder_path + "/running_music.wav"
-        else:
+        elif not self._skip_default_voice:
             self._running_bgm_file = self._package_path + "/running_music.wav"
 
         self._check_playing_timer = self._node.create_timer(1, self.check_playing_callback)
@@ -118,6 +119,9 @@ class AnnounceControllerProperty:
 
     def process_running_music(self):
         try:
+            if not self._running_bgm_file:
+                return
+
             if self._node.get_clock().now() - self._bgm_announce_time < Duration(seconds=self._mute_timeout["driving_bgm"]):
                 return
 
@@ -159,7 +163,7 @@ class AnnounceControllerProperty:
             sound = WaveObject.from_wave_file("{}/{}.wav".format(self._package_path, message))
             self._wav_object = sound.play()
         else:
-            self._node.get_logger().info("Do not found the voice in the primary voice folder, and skip default voice is enabled")
+            self._node.get_logger().info("Didn't found the voice in the primary voice folder, and skip default voice is enabled")
 
     def send_announce(self, message):
         priority = PRIORITY_DICT.get(message, 0)
