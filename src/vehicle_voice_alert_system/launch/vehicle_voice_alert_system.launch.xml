@@ -6,6 +6,5 @@
   <node pkg="vehicle_voice_alert_system" exec="vehicle_voice_alert_system"  output="screen">
     <param from="$(var vehicle_voice_param)"/>
     <param name="primary_voice_folder_path" value="$(var primary_voice_folder_path)" />
-    <param name="skip_default_voice" value="$(var skip_default_voice)" />
   </node>
 </launch>
