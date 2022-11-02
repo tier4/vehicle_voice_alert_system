@@ -54,6 +54,10 @@ class AnnounceControllerProperty:
         self._manual_driving_bgm = (
             self._node.get_parameter("manual_driving_bgm").get_parameter_value().bool_value
         )
+        self._node.declare_parameter("skip_default_voice", False)
+        self._skip_default_voice = (
+            self._node.get_parameter("skip_default_voice").get_parameter_value().bool_value
+        )
 
         self._node.declare_parameter("driving_velocity_threshold", 0.2)
         self._driving_velocity_threshold = (
@@ -80,9 +84,10 @@ class AnnounceControllerProperty:
             get_package_share_directory("vehicle_voice_alert_system") + "/resource/sound"
         )
 
+        self._running_bgm_file = ""
         if path.exists(self._primary_voice_folder_path + "/running_music.wav"):
             self._running_bgm_file = self._primary_voice_folder_path + "/running_music.wav"
-        else:
+        elif not self._skip_default_voice:
             self._running_bgm_file = self._package_path + "/running_music.wav"
 
         self._check_playing_timer = self._node.create_timer(1, self.check_playing_callback)
@@ -114,6 +119,9 @@ class AnnounceControllerProperty:
 
     def process_running_music(self):
         try:
+            if not self._running_bgm_file:
+                return
+
             if self._node.get_clock().now() - self._bgm_announce_time < Duration(seconds=self._mute_timeout["driving_bgm"]):
                 return
 
@@ -150,9 +158,12 @@ class AnnounceControllerProperty:
     def play_sound(self, message):
         if path.exists("{}/{}.wav".format(self._primary_voice_folder_path, message)):
             sound = WaveObject.from_wave_file("{}/{}.wav".format(self._primary_voice_folder_path, message))
-        else:
+            self._wav_object = sound.play()
+        elif not self._skip_default_voice:
             sound = WaveObject.from_wave_file("{}/{}.wav".format(self._package_path, message))
-        self._wav_object = sound.play()
+            self._wav_object = sound.play()
+        else:
+            self._node.get_logger().info("Didn't found the voice in the primary voice folder, and skip default voice is enabled")
 
     def send_announce(self, message):
         priority = PRIORITY_DICT.get(message, 0)
