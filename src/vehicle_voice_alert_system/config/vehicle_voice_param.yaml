@@ -9,4 +9,3 @@ vehicle_voice_alert_system:
       turn_signal: 5.0
       in_emergency: 30.0
       driving_bgm: 0.0
-    primary_voice_folder_path: /opt/vehicle_sound # Param to set the voice folder path, sound file will be used if it exist in this folder
