@@ -2,7 +2,6 @@
 <launch>
   <arg name="vehicle_voice_param" default="$(find-pkg-share vehicle_voice_alert_system)/config/vehicle_voice_param.yaml" />
   <arg name="primary_voice_folder_path" default="/opt/vehicle_sound" description="set the voice folder path, sound file will be used if it exist in this folder"/>
-  <arg name="skip_default_voice" default="false" description="skip playing default voice, if the voice is not found in the primary_voice_folder_path"/>
 
   <node pkg="vehicle_voice_alert_system" exec="vehicle_voice_alert_system"  output="screen">
     <param from="$(var vehicle_voice_param)"/>
