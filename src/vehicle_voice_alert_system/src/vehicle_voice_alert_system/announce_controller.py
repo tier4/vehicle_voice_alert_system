@@ -58,6 +58,10 @@ class AnnounceControllerProperty:
         self._skip_default_voice = (
             self._node.get_parameter("skip_default_voice").get_parameter_value().bool_value
         )
+        self._node.declare_parameter("mute_overlap_bgm", False)
+        self._mute_overlap_bgm = (
+            self._node.get_parameter("mute_overlap_bgm").get_parameter_value().bool_value
+        )
 
         self._node.declare_parameter("driving_velocity_threshold", 0.2)
         self._driving_velocity_threshold = (
@@ -90,7 +94,7 @@ class AnnounceControllerProperty:
         elif not self._skip_default_voice:
             self._running_bgm_file = self._package_path + "/running_music.wav"
 
-        self._check_playing_timer = self._node.create_timer(1, self.check_playing_callback)
+        self._check_playing_timer = self._node.create_timer(0.5, self.check_playing_callback)
         self._srv = self._node.create_service(
             Announce, "/api/vehicle_voice/set/announce", self.announce_service
         )
@@ -125,6 +129,10 @@ class AnnounceControllerProperty:
             if self._node.get_clock().now() - self._bgm_announce_time < Duration(seconds=self._mute_timeout["driving_bgm"]):
                 return
 
+            if self._mute_overlap_bgm and self._wav_object and self._wav_object.is_playing():
+                self._bgm_announce_time = self._node.get_clock().now()
+                return
+
             if self._in_driving_state and not self._in_emergency_state:
                 if not self._music_object or not self._music_object.is_playing():
                     sound = WaveObject.from_wave_file(self._running_bgm_file)
@@ -156,6 +164,9 @@ class AnnounceControllerProperty:
             self._node.get_logger().error("not able to check the current playing: " + str(e))
 
     def play_sound(self, message):
+        if self._mute_overlap_bgm and self._music_object and self._music_object.is_playing():
+            self._music_object.stop()
+
         if path.exists("{}/{}.wav".format(self._primary_voice_folder_path, message)):
             sound = WaveObject.from_wave_file("{}/{}.wav".format(self._primary_voice_folder_path, message))
             self._wav_object = sound.play()
