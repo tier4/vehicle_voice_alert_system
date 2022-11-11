@@ -41,7 +41,7 @@ class AnnounceControllerProperty:
         self._autoware_state = ""
         self._current_announce = ""
         self._pending_announce_list = []
-        self._emergency_trigger_time = 0
+        self._emergency_trigger_time = self._node.get_clock().now()
         self._wav_object = None
         self._music_object = None
         self._in_stop_status = False
@@ -53,6 +53,14 @@ class AnnounceControllerProperty:
         self._node.declare_parameter("manual_driving_bgm", False)
         self._manual_driving_bgm = (
             self._node.get_parameter("manual_driving_bgm").get_parameter_value().bool_value
+        )
+        self._node.declare_parameter("skip_default_voice", False)
+        self._skip_default_voice = (
+            self._node.get_parameter("skip_default_voice").get_parameter_value().bool_value
+        )
+        self._node.declare_parameter("mute_overlap_bgm", False)
+        self._mute_overlap_bgm = (
+            self._node.get_parameter("mute_overlap_bgm").get_parameter_value().bool_value
         )
 
         self._node.declare_parameter("driving_velocity_threshold", 0.2)
@@ -80,12 +88,13 @@ class AnnounceControllerProperty:
             get_package_share_directory("vehicle_voice_alert_system") + "/resource/sound"
         )
 
+        self._running_bgm_file = ""
         if path.exists(self._primary_voice_folder_path + "/running_music.wav"):
             self._running_bgm_file = self._primary_voice_folder_path + "/running_music.wav"
-        else:
+        elif not self._skip_default_voice:
             self._running_bgm_file = self._package_path + "/running_music.wav"
 
-        self._check_playing_timer = self._node.create_timer(1, self.check_playing_callback)
+        self._check_playing_timer = self._node.create_timer(0.5, self.check_playing_callback)
         self._srv = self._node.create_service(
             Announce, "/api/vehicle_voice/set/announce", self.announce_service
         )
@@ -114,7 +123,14 @@ class AnnounceControllerProperty:
 
     def process_running_music(self):
         try:
+            if not self._running_bgm_file:
+                return
+
             if self._node.get_clock().now() - self._bgm_announce_time < Duration(seconds=self._mute_timeout["driving_bgm"]):
+                return
+
+            if self._mute_overlap_bgm and self._wav_object and self._wav_object.is_playing():
+                self._bgm_announce_time = self._node.get_clock().now()
                 return
 
             if self._in_driving_state and not self._in_emergency_state:
@@ -148,11 +164,17 @@ class AnnounceControllerProperty:
             self._node.get_logger().error("not able to check the current playing: " + str(e))
 
     def play_sound(self, message):
+        if self._mute_overlap_bgm and self._music_object and self._music_object.is_playing():
+            self._music_object.stop()
+
         if path.exists("{}/{}.wav".format(self._primary_voice_folder_path, message)):
             sound = WaveObject.from_wave_file("{}/{}.wav".format(self._primary_voice_folder_path, message))
-        else:
+            self._wav_object = sound.play()
+        elif not self._skip_default_voice:
             sound = WaveObject.from_wave_file("{}/{}.wav".format(self._package_path, message))
-        self._wav_object = sound.play()
+            self._wav_object = sound.play()
+        else:
+            self._node.get_logger().info("Didn't found the voice in the primary voice folder, and skip default voice is enabled")
 
     def send_announce(self, message):
         priority = PRIORITY_DICT.get(message, 0)
@@ -187,14 +209,13 @@ class AnnounceControllerProperty:
         if emergency_stopped and not self._in_emergency_state:
             self.send_announce("emergency")
             self._in_emergency_state = True
+            self._emergency_trigger_time = self._node.get_clock().now()
         elif not emergency_stopped and self._in_emergency_state:
             self._in_emergency_state = False
         elif emergency_stopped and self._in_emergency_state and not self._in_stop_status:
-            if not self._emergency_trigger_time:
-                self._emergency_trigger_time = self._node.get_clock().now().to_msg().sec
-            elif self._node.get_clock().now().to_msg().sec - self._emergency_trigger_time > Duration(seconds=self._mute_timeout["in_emergency"]):
+            if self._node.get_clock().now() - self._emergency_trigger_time > Duration(seconds=self._mute_timeout["in_emergency"]):
                 self.send_announce("in_emergency")
-                self._emergency_trigger_time = 0
+                self._emergency_trigger_time = self._node.get_clock().now()
 
     def check_turn_signal(self, turn_signal):
         if self._node.get_clock().now() - self._signal_announce_time < Duration(seconds=self._mute_timeout["turn_signal"]):
