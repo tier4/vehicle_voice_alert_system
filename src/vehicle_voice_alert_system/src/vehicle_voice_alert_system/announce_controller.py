@@ -270,10 +270,14 @@ class AnnounceControllerProperty:
                 self.send_announce("obstacle_stop")
                 self._stop_reason_announce_time = self._node.get_clock().now()
             elif shortest_stop_reason in [
-                "StopLine",
-                "Walkway",
-                "Crosswalk",
+                "Intersection",
                 "MergeFromPrivateRoad",
+                "Crosswalk",
+                "Walkway",
+                "StopLine",
+                "NoStoppingArea",
+                "TrafficLight",
+                "BlindSpot",
             ]:
                 self.send_announce("temporary_stop")
                 self._in_stop_status = True
