@@ -11,3 +11,18 @@ vehicle_voice_alert_system:
       driving_bgm: 0.0
     skip_default_voice: false # Param for skip playing default voice, if the voice is not found in the primary_voice_folder_path
     mute_overlap_bgm: true # Param for muting bgm when the announce is play
+    stop_reason_list: # Param for decide the stop reason to announce stopping car
+      - Intersection
+      - MergeFromPrivateRoad
+      - Crosswalk
+      - Walkway
+      - StopLine
+      - NoStoppingArea
+      - TrafficLight
+      - BlindSpot
+    obstacle_stop_reason_list: # Param for decide the stop reason to announce obstacle stop
+      - ObstacleStop
+      - DetectionArea
+      - SurroundObstacleCheck
+      - BlindSpot
+      - BlockedByObstacles

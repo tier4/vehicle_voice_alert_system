@@ -62,10 +62,17 @@ class AnnounceControllerProperty:
         self._mute_overlap_bgm = (
             self._node.get_parameter("mute_overlap_bgm").get_parameter_value().bool_value
         )
-
         self._node.declare_parameter("driving_velocity_threshold", 0.2)
         self._driving_velocity_threshold = (
             self._node.get_parameter("driving_velocity_threshold").get_parameter_value().double_value
+        )
+        self._node.declare_parameter("obstacle_stop_reason_list", ["dummy"])
+        self._obstacle_stop_reason_list = (
+            self._node.get_parameter("obstacle_stop_reason_list").get_parameter_value().string_array_value
+        )
+        self._node.declare_parameter("stop_reason_list", ["dummy"])
+        self._stop_reason_list = (
+            self._node.get_parameter("stop_reason_list").get_parameter_value().string_array_value
         )
 
         self._node.declare_parameter("mute_timeout.restart_engage", 0.0)
@@ -255,30 +262,11 @@ class AnnounceControllerProperty:
             ):
                 return
 
-            if (
-                shortest_stop_reason
-                in [
-                    "ObstacleStop",
-                    "DetectionArea",
-                    "SurroundObstacleCheck",
-                    "BlindSpot",
-                    "BlockedByObstacles",
-                ]
-                and self._velocity == 0
-            ):
+            if (shortest_stop_reason in self._obstacle_stop_reason_list and self._velocity == 0):
                 self._in_stop_status = True
                 self.send_announce("obstacle_stop")
                 self._stop_reason_announce_time = self._node.get_clock().now()
-            elif shortest_stop_reason in [
-                "Intersection",
-                "MergeFromPrivateRoad",
-                "Crosswalk",
-                "Walkway",
-                "StopLine",
-                "NoStoppingArea",
-                "TrafficLight",
-                "BlindSpot",
-            ]:
+            elif shortest_stop_reason in self._stop_reason_list:
                 self.send_announce("temporary_stop")
                 self._in_stop_status = True
                 self._stop_reason_announce_time = self._node.get_clock().now()
