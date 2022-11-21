@@ -45,6 +45,7 @@ class AnnounceControllerProperty:
         self._wav_object = None
         self._music_object = None
         self._in_stop_status = False
+        self._restarted_flag = True
         self._signal_announce_time = self._node.get_clock().now()
         self._stop_reason_announce_time = self._node.get_clock().now()
         self._start_request_announce_time = self._node.get_clock().now()
@@ -111,12 +112,14 @@ class AnnounceControllerProperty:
             announce_type = request.kind
             if announce_type == 1:
                 self.send_announce("departure")
+                self._restarted_flag = True
             elif announce_type == 2 and self._is_auto_running:
                 if self._node.get_clock().now() - self._start_request_announce_time > Duration(
                     seconds=self._mute_timeout["restart_engage"]
                 ):
                     self._start_request_announce_time = self._node.get_clock().now()
                     self.send_announce("restart_engage")
+                    self._restarted_flag = True
                 else:
                     self._node.get_logger().warning("skip announce restart engage")
                 # To reset the stop reason announce, so that it can announce if vehicle reengage
@@ -259,16 +262,18 @@ class AnnounceControllerProperty:
         if shortest_stop_reason != "" and shortest_distance > -1 and shortest_distance < 2:
             if self._node.get_clock().now() - self._stop_reason_announce_time < Duration(
                 seconds=self._mute_timeout["stop_reason"]
-            ):
+            ) or not self._restarted_flag:
                 return
 
             if (shortest_stop_reason in self._obstacle_stop_reason_list and self._velocity == 0):
-                self._in_stop_status = True
                 self.send_announce("obstacle_stop")
+                self._in_stop_status = True
+                self._restarted_flag = True
                 self._stop_reason_announce_time = self._node.get_clock().now()
             elif shortest_stop_reason in self._stop_reason_list:
                 self.send_announce("temporary_stop")
                 self._in_stop_status = True
+                self._restarted_flag = True
                 self._stop_reason_announce_time = self._node.get_clock().now()
             else:
                 self._in_stop_status = False
