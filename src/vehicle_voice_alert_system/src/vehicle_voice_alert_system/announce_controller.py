@@ -268,12 +268,12 @@ class AnnounceControllerProperty:
             if (shortest_stop_reason in self._obstacle_stop_reason_list and self._velocity == 0):
                 self.send_announce("obstacle_stop")
                 self._in_stop_status = True
-                self._restarted_flag = True
+                self._restarted_flag = False
                 self._stop_reason_announce_time = self._node.get_clock().now()
             elif shortest_stop_reason in self._stop_reason_list:
                 self.send_announce("temporary_stop")
                 self._in_stop_status = True
-                self._restarted_flag = True
+                self._restarted_flag = False
                 self._stop_reason_announce_time = self._node.get_clock().now()
             else:
                 self._in_stop_status = False
