@@ -1,9 +1,10 @@
 # !/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+import rclpy
 from rclpy.duration import Duration
 from tier4_api_msgs.msg import AwapiAutowareStatus, AwapiVehicleStatus
-
+from autoware_adapi_v1_msgs.msg import MotionState
 
 class AutowareStateInterface:
     def __init__(self, node):
@@ -14,6 +15,9 @@ class AutowareStateInterface:
 
         self.turn_signal_callback_list = []
         self.velocity_callback_list = []
+
+        self.motion_state_callback_list = []
+
         self._node = node
 
         self._node.declare_parameter("ignore_emergency_stoppped", False)
@@ -21,11 +25,22 @@ class AutowareStateInterface:
             self._node.get_parameter("ignore_emergency_stoppped").get_parameter_value().bool_value
         )
 
+        api_qos = rclpy.qos.QoSProfile(
+            history=rclpy.qos.QoSHistoryPolicy.KEEP_LAST,
+            depth=10,
+            reliability=rclpy.qos.QoSReliabilityPolicy.RELIABLE,
+            durability=rclpy.qos.QoSDurabilityPolicy.TRANSIENT_LOCAL,
+        )
+
+
         self._sub_autoware_state = node.create_subscription(
             AwapiAutowareStatus, "/awapi/autoware/get/status", self.autoware_state_callback, 10
         )
         self._sub_vehicle_state = node.create_subscription(
             AwapiVehicleStatus, "/awapi/vehicle/get/status", self.vehicle_state_callback, 10
+        )
+        self._sub_motion_state = node.create_subscription(
+            MotionState, "/api/motion/state", self.motion_state_callback, api_qos
         )
         self._autoware_status_time = self._node.get_clock().now()
         self._vehicle_status_time = self._node.get_clock().now()
@@ -64,6 +79,9 @@ class AutowareStateInterface:
 
     def set_velocity_callback(self, callback):
         self.velocity_callback_list.append(callback)
+
+    def set_motion_state_callback(self, callback):
+        self.motion_state_callback_list.append(callback)
 
     # ros subscriber
     # autoware stateをsubしたときの処理
@@ -105,5 +123,15 @@ class AutowareStateInterface:
                 callback(turn_signal)
             for callback in self.velocity_callback_list:
                 callback(velocity)
+        except Exception as e:
+            self._node.get_logger().error("Unable to get the vehicle state, ERROR: " + str(e))
+
+    # 発進時のmotion stateをsubしたときの処理
+    def motion_state_callback(self, topic):
+        try:
+            state = topic.state
+
+            for callback in self.motion_state_callback_list:
+                callback(state)
         except Exception as e:
             self._node.get_logger().error("Unable to get the vehicle state, ERROR: " + str(e))
