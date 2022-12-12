@@ -5,6 +5,7 @@ import rclpy
 from rclpy.duration import Duration
 from tier4_api_msgs.msg import AwapiAutowareStatus, AwapiVehicleStatus
 from autoware_adapi_v1_msgs.msg import MotionState
+from autoware_auto_system_msgs.msg import HazardStatusStamped
 
 class AutowareStateInterface:
     def __init__(self, node):
@@ -32,7 +33,6 @@ class AutowareStateInterface:
             durability=rclpy.qos.QoSDurabilityPolicy.TRANSIENT_LOCAL,
         )
 
-
         self._sub_autoware_state = node.create_subscription(
             AwapiAutowareStatus, "/awapi/autoware/get/status", self.autoware_state_callback, 10
         )
@@ -41,6 +41,8 @@ class AutowareStateInterface:
         )
         self._sub_motion_state = node.create_subscription(
             MotionState, "/api/motion/state", self.motion_state_callback, api_qos
+        self._sub_hazard_status = node.create_subscription(
+            HazardStatusStamped, "/system/emergency/hazard_status", self.sub_hazard_status_callback, 10
         )
         self._autoware_status_time = self._node.get_clock().now()
         self._vehicle_status_time = self._node.get_clock().now()
@@ -103,9 +105,6 @@ class AutowareStateInterface:
             for callback in self.control_mode_callback_list:
                 callback(control_mode)
 
-            for callback in self.emergency_stopped_callback_list:
-                callback(emergency_stopped)
-
             for callback in self.stop_reason_callback_list:
                 callback(stop_reason)
         except Exception as e:
@@ -126,6 +125,7 @@ class AutowareStateInterface:
         except Exception as e:
             self._node.get_logger().error("Unable to get the vehicle state, ERROR: " + str(e))
 
+<<<<<<< HEAD
     # 発進時のmotion stateをsubしたときの処理
     def motion_state_callback(self, topic):
         try:
@@ -135,3 +135,12 @@ class AutowareStateInterface:
                 callback(state)
         except Exception as e:
             self._node.get_logger().error("Unable to get the vehicle state, ERROR: " + str(e))
+=======
+    def sub_hazard_status_callback(self, topic):
+        try:
+            emergency_stopped = topic.status.emergency
+            for callback in self.emergency_stopped_callback_list:
+                callback(emergency_stopped)
+        except Exception as e:
+            self._node.get_logger().error("Unable to get the hazard_status, ERROR: " + str(e))
+>>>>>>> 7aa47fc1e18ab3af06e8b23abcb12c7a99653f7c
