@@ -76,6 +76,7 @@ class AnnounceControllerProperty:
         )
 
         self._node.declare_parameter("mute_timeout.restart_engage", 0.0)
+        self._node.declare_parameter("mute_timeout.accept_start", 0.0)
         self._node.declare_parameter("mute_timeout.stop_reason", 0.0)
         self._node.declare_parameter("mute_timeout.turn_signal", 0.0)
         self._node.declare_parameter("mute_timeout.in_emergency", 0.0)
@@ -148,8 +149,7 @@ class AnnounceControllerProperty:
 
     def announce_engage_when_starting(self):
         try:
-            self._node.get_logger().info("motion state: {}".format(str(self._current_motion_state)))
-            if (self._current_motion_state == 2 or self._current_motion_state == 3) and self._prev_motion_state != 2 and self._prev_motion_state != 3:
+            if (self._current_motion_state == 2 or self._current_motion_state == 3) and (self._prev_motion_state == 0 or self._prev_motion_state == 1):
                 if self._node.get_clock().now() - self._start_request_announce_time > Duration(
                     seconds=self._mute_timeout["restart_engage"]
                 ):

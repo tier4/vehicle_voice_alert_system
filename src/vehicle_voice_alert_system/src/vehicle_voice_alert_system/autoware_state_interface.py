@@ -41,6 +41,7 @@ class AutowareStateInterface:
         )
         self._sub_motion_state = node.create_subscription(
             MotionState, "/api/motion/state", self.motion_state_callback, api_qos
+        )
         self._sub_hazard_status = node.create_subscription(
             HazardStatusStamped, "/system/emergency/hazard_status", self.sub_hazard_status_callback, 10
         )
@@ -125,7 +126,6 @@ class AutowareStateInterface:
         except Exception as e:
             self._node.get_logger().error("Unable to get the vehicle state, ERROR: " + str(e))
 
-<<<<<<< HEAD
     # 発進時のmotion stateをsubしたときの処理
     def motion_state_callback(self, topic):
         try:
@@ -135,7 +135,7 @@ class AutowareStateInterface:
                 callback(state)
         except Exception as e:
             self._node.get_logger().error("Unable to get the vehicle state, ERROR: " + str(e))
-=======
+
     def sub_hazard_status_callback(self, topic):
         try:
             emergency_stopped = topic.status.emergency
@@ -143,4 +143,3 @@ class AutowareStateInterface:
                 callback(emergency_stopped)
         except Exception as e:
             self._node.get_logger().error("Unable to get the hazard_status, ERROR: " + str(e))
->>>>>>> 7aa47fc1e18ab3af06e8b23abcb12c7a99653f7c
