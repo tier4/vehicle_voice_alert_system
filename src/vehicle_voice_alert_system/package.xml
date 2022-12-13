@@ -10,6 +10,7 @@
   <depend>rclpy</depend>
   <depend>tier4_api_msgs</depend>
   <depend>tier4_hmi_msgs</depend>
+  <depend>autoware_adapi_v1_msgs</depend>
   <depend>autoware_auto_system_msgs</depend>
 
   <export>
