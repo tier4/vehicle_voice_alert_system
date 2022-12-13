@@ -179,8 +179,6 @@ class AnnounceControllerProperty:
         except Exception as e:
             self._node.get_logger().error("not able to play the announce, ERROR: {}".format(str(e)))
 
-
-
     def check_playing_callback(self):
         try:
             self.process_running_music()

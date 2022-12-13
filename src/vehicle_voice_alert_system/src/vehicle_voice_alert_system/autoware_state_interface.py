@@ -13,10 +13,8 @@ class AutowareStateInterface:
         self.control_mode_callback_list = []
         self.emergency_stopped_callback_list = []
         self.stop_reason_callback_list = []
-
         self.turn_signal_callback_list = []
         self.velocity_callback_list = []
-
         self.motion_state_callback_list = []
 
         self._node = node
@@ -134,7 +132,7 @@ class AutowareStateInterface:
             for callback in self.motion_state_callback_list:
                 callback(state)
         except Exception as e:
-            self._node.get_logger().error("Unable to get the vehicle state, ERROR: " + str(e))
+            self._node.get_logger().error("Unable to get the motion state, ERROR: " + str(e))
 
     def sub_hazard_status_callback(self, topic):
         try:
