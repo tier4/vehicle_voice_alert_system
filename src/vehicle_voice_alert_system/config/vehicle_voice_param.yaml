@@ -5,6 +5,7 @@ vehicle_voice_alert_system:
     driving_velocity_threshold: 0.2 # param for the threshold to play the running bgm
     mute_timeout: # Param for to mute for a period after the announce
       restart_engage: 5.0
+      accept_start: 5.0
       stop_reason: 20.0
       turn_signal: 5.0
       in_emergency: 30.0
