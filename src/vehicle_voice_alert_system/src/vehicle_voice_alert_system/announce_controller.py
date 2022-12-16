@@ -179,11 +179,12 @@ class AnnounceControllerProperty:
                 self._music_object.stop()
             sound = WaveObject.from_wave_file("{}/{}.wav".format(self._primary_voice_folder_path, message))
             self._wav_object = sound.play()
-        elif not self._skip_default_voice:
-            if self._mute_overlap_bgm and self._music_object and self._music_object.is_playing():
-                self._music_object.stop()
-            sound = WaveObject.from_wave_file("{}/{}.wav".format(self._package_path, message))
-            self._wav_object = sound.play()
+        elif path.exists("{}/{}.wav".format(self._package_path, message)):
+            if not self._skip_default_voice:
+                if self._mute_overlap_bgm and self._music_object and self._music_object.is_playing():
+                    self._music_object.stop()
+                sound = WaveObject.from_wave_file("{}/{}.wav".format(self._package_path, message))
+                self._wav_object = sound.play()
         else:
             self._node.get_logger().info("Didn't found the voice in the primary voice folder, and skip default voice is enabled")
 
