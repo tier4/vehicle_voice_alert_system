@@ -149,7 +149,7 @@ class AnnounceControllerProperty:
 
     def announce_engage_when_starting(self):
         try:
-            if (self._current_motion_state == 2 or self._current_motion_state == 3) and (self._prev_motion_state == 0 or self._prev_motion_state == 1):
+            if (self._current_motion_state == 2 or self._current_motion_state == 3) and self._prev_motion_state == 1:
                 if self._node.get_clock().now() - self._start_request_announce_time > Duration(
                     seconds=self._mute_timeout["restart_engage"]
                 ):
