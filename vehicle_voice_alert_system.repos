@@ -2,20 +2,20 @@ repositories:
   src/tier4_autoware_msgs:
     type: git
     url: https://github.com/tier4/tier4_autoware_msgs.git
-    version: 733013d79b19172dd641ebcc4de94a066c264153
+    version: 2e438840cf9b00e2b2279ea214b35045969342cf
   src/auto_msgs:
     type: git
     url: https://github.com/tier4/autoware_auto_msgs.git
-    version: bd162589a837a2c1ecea943f80c035109e1ae594
+    version: 636064fe3e73e33c5df4f65deabe63432ce0a8cd
   src/autoware_msgs:
     type: git
     url: https://github.com/autowarefoundation/autoware_msgs.git
-    version: f33ed6d53869db47fe24aac43df59c6cf2fbf93c
+    version: 2ca93de0974af3015b7c394dc106a848b13aae7b
   src/autoware_adapi_msgs:
     type: git
     url: https://github.com/autowarefoundation/autoware_adapi_msgs.git
-    version: d049f403698749eaf2dccfad37a2e586fd916200
+    version: 9679b5a7a1f4cfff2fa50b80d2759d3937f2f953
   src/boot_shutdown_tools:
     type: git
     url: https://github.com/tier4/boot_shutdown_tools.git
-    version: 13e100ef95b577c83335b6779b4e326b2d85b349
+    version: v0.1.0
