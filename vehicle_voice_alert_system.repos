@@ -18,4 +18,4 @@ repositories:
   src/boot_shutdown_tools:
     type: git
     url: https://github.com/tier4/boot_shutdown_tools.git
-    version: 13e100ef95b577c83335b6779b4e326b2d85b349
+    version: v0.1.0
