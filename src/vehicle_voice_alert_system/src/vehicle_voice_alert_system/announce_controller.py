@@ -32,6 +32,7 @@ class AnnounceControllerProperty:
         autoware_state_interface.set_stop_reason_callback(self.sub_stop_reason)
         autoware_state_interface.set_velocity_callback(self.sub_velocity)
         autoware_state_interface.set_motion_state_callback(self.sub_motion_state)
+        autoware_state_interface.set_localization_initialization_state_callback(self.sub_localization_initialization_state)
 
         self._node = node
         self._ros_service_interface = ros_service_interface
@@ -313,3 +314,8 @@ class AnnounceControllerProperty:
 
     def sub_motion_state(self, motion_state):
         self._current_motion_state = motion_state
+
+    def sub_localization_initialization_state(self, initialization_state):
+        if initialization_state == 1:
+            self._current_motion_state = 0
+            self._prev_motion_state = 0

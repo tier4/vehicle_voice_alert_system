@@ -4,7 +4,7 @@
 import rclpy
 from rclpy.duration import Duration
 from tier4_api_msgs.msg import AwapiAutowareStatus, AwapiVehicleStatus
-from autoware_adapi_v1_msgs.msg import MotionState
+from autoware_adapi_v1_msgs.msg import MotionState, LocalizationInitializationState
 from autoware_auto_system_msgs.msg import HazardStatusStamped
 
 class AutowareStateInterface:
@@ -16,6 +16,7 @@ class AutowareStateInterface:
         self.turn_signal_callback_list = []
         self.velocity_callback_list = []
         self.motion_state_callback_list = []
+        self.localization_initialization_state_callback_list = []
 
         self._node = node
 
@@ -42,6 +43,9 @@ class AutowareStateInterface:
         )
         self._sub_hazard_status = node.create_subscription(
             HazardStatusStamped, "/system/emergency/hazard_status", self.sub_hazard_status_callback, 10
+        )
+        self._sub_localiztion_initializtion_state = node.create_subscription(
+            LocalizationInitializationState, "/api/localization/initialization_state", self.sub_localization_initialization_state_callback, 10
         )
         self._autoware_status_time = self._node.get_clock().now()
         self._vehicle_status_time = self._node.get_clock().now()
@@ -83,6 +87,9 @@ class AutowareStateInterface:
 
     def set_motion_state_callback(self, callback):
         self.motion_state_callback_list.append(callback)
+
+    def set_localization_initialization_state_callback(self, callback):
+        self.localization_initialization_state_callback_list.append(callback)
 
     # ros subscriber
     # autoware stateをsubしたときの処理
@@ -139,5 +146,13 @@ class AutowareStateInterface:
             emergency_stopped = topic.status.emergency
             for callback in self.emergency_stopped_callback_list:
                 callback(emergency_stopped)
+        except Exception as e:
+            self._node.get_logger().error("Unable to get the hazard_status, ERROR: " + str(e))
+
+    def sub_localization_initialization_state_callback(self, topic):
+        try:
+            initialization_state = topic.state
+            for callback in self.localization_initialization_state_callback_list:
+                callback(initialization_state)
         except Exception as e:
             self._node.get_logger().error("Unable to get the hazard_status, ERROR: " + str(e))
