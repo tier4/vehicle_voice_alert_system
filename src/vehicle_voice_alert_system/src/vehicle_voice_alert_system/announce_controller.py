@@ -23,7 +23,7 @@ PRIORITY_DICT = {
 
 
 class AnnounceControllerProperty:
-    def __init__(self, node, autoware_state_interface=None):
+    def __init__(self, node, autoware_state_interface=None, ros_service_interface=None):
         super(AnnounceControllerProperty, self).__init__()
         autoware_state_interface.set_autoware_state_callback(self.sub_autoware_state)
         autoware_state_interface.set_emergency_stopped_callback(self.sub_emergency)
@@ -31,14 +31,20 @@ class AnnounceControllerProperty:
         autoware_state_interface.set_turn_signal_callback(self.check_turn_signal)
         autoware_state_interface.set_stop_reason_callback(self.sub_stop_reason)
         autoware_state_interface.set_velocity_callback(self.sub_velocity)
+        autoware_state_interface.set_motion_state_callback(self.sub_motion_state)
+        autoware_state_interface.set_localization_initialization_state_callback(self.sub_localization_initialization_state)
 
         self._node = node
+        self._ros_service_interface = ros_service_interface
         self.is_auto_mode = False
         self._is_auto_running = False
         self._in_driving_state = False
         self._in_emergency_state = False
         self._velocity = None
         self._autoware_state = ""
+        self._current_motion_state = 0
+        self._prev_motion_state = 0
+
         self._current_announce = ""
         self._pending_announce_list = []
         self._emergency_trigger_time = self._node.get_clock().now()
@@ -48,7 +54,9 @@ class AnnounceControllerProperty:
         self._signal_announce_time = self._node.get_clock().now()
         self._stop_reason_announce_time = self._node.get_clock().now()
         self._start_request_announce_time = self._node.get_clock().now()
+        self._accept_start_time = self._node.get_clock().now()
         self._bgm_announce_time = self._node.get_clock().now()
+        self._restart_time = self._node.get_clock().now()
 
         self._node.declare_parameter("manual_driving_bgm", False)
         self._manual_driving_bgm = (
@@ -69,6 +77,8 @@ class AnnounceControllerProperty:
         )
 
         self._node.declare_parameter("mute_timeout.restart_engage", 0.0)
+
+        self._node.declare_parameter("mute_timeout.accept_start", 0.0)
         self._node.declare_parameter("mute_timeout.stop_reason", 0.0)
         self._node.declare_parameter("mute_timeout.turn_signal", 0.0)
         self._node.declare_parameter("mute_timeout.in_emergency", 0.0)
@@ -95,28 +105,15 @@ class AnnounceControllerProperty:
             self._running_bgm_file = self._package_path + "/running_music.wav"
 
         self._check_playing_timer = self._node.create_timer(0.5, self.check_playing_callback)
+        self._announce_engage_when_starting_timer = self._node.create_timer(0.2, self.announce_engage_when_starting)
         self._srv = self._node.create_service(
             Announce, "/api/vehicle_voice/set/announce", self.announce_service
         )
 
+    # TODO: Delete this server when FMS is adapted new ADAPI.
     def announce_service(self, request, response):
         try:
-            announce_type = request.kind
-            if announce_type == 1:
-                self.send_announce("departure")
-            elif announce_type == 2 and self._is_auto_running:
-                if self._node.get_clock().now() - self._start_request_announce_time > Duration(
-                    seconds=self._mute_timeout["restart_engage"]
-                ):
-                    self._start_request_announce_time = self._node.get_clock().now()
-                    self.send_announce("restart_engage")
-                else:
-                    self._node.get_logger().warning("skip announce restart engage")
-                # To reset the stop reason announce, so that it can announce if vehicle reengage
-                self._stop_reason_announce_time = self._node.get_clock().now()-Duration(seconds=self._mute_timeout["restart_engage"])
-            if self._wav_object:
-                if self._wav_object.is_playing():
-                    self._wav_object.wait_done()
+            pass
         except Exception as e:
             self._node.get_logger().error("not able to play the announce, ERROR: {}".format(str(e)))
         return response
@@ -150,6 +147,38 @@ class AnnounceControllerProperty:
 
     def sub_control_mode(self, control_mode):
         self.is_auto_mode = control_mode == 1
+
+    def announce_engage_when_starting(self):
+        try:
+            if (self._current_motion_state == 2 or self._current_motion_state == 3) and self._prev_motion_state == 1:
+                if self._node.get_clock().now() - self._start_request_announce_time > Duration(
+                    seconds=self._mute_timeout["restart_engage"]
+                ):
+                    self._start_request_announce_time = self._node.get_clock().now()
+                    self.send_announce("departure")
+                else:
+                    self._node.get_logger().warning("skip announce restart engage")
+
+                if self._current_motion_state == 2:
+                    self._ros_service_interface.accept_start()
+
+
+                # To reset the stop reason announce, so that it can announce if vehicle reengage
+                self._stop_reason_announce_time = self._node.get_clock().now()-Duration(seconds=self._mute_timeout["restart_engage"])
+
+            # Check to see if it has not stopped waiting for start acceptance
+            if self._current_motion_state != 2:
+                self._accept_start_time = self._node.get_clock().now()
+
+            # Send again when stopped in starting state for a certain period of time
+            if self._current_motion_state == 2 and self._node.get_clock().now() - self._accept_start_time > Duration(
+                    seconds=self._mute_timeout["accept_start"]
+                ):
+                self._ros_service_interface.accept_start()
+
+            self._prev_motion_state = self._current_motion_state
+        except Exception as e:
+            self._node.get_logger().error("not able to play the announce, ERROR: {}".format(str(e)))
 
     def check_playing_callback(self):
         try:
@@ -270,10 +299,14 @@ class AnnounceControllerProperty:
                 self.send_announce("obstacle_stop")
                 self._stop_reason_announce_time = self._node.get_clock().now()
             elif shortest_stop_reason in [
-                "StopLine",
-                "Walkway",
-                "Crosswalk",
+                "Intersection",
                 "MergeFromPrivateRoad",
+                "Crosswalk",
+                "Walkway",
+                "StopLine",
+                "NoStoppingArea",
+                "TrafficLight",
+                "BlindSpot",
             ]:
                 self.send_announce("temporary_stop")
                 self._in_stop_status = True
@@ -282,3 +315,11 @@ class AnnounceControllerProperty:
                 self._in_stop_status = False
         else:
             self._in_stop_status = False
+
+    def sub_motion_state(self, motion_state):
+        self._current_motion_state = motion_state
+
+    def sub_localization_initialization_state(self, initialization_state):
+        if initialization_state == 1:
+            self._current_motion_state = 0
+            self._prev_motion_state = 0
