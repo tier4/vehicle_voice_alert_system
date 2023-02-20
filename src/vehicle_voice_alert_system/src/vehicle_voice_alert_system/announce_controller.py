@@ -106,6 +106,7 @@ class AnnounceControllerProperty:
 
         self._check_playing_timer = self._node.create_timer(0.5, self.check_playing_callback)
         self._announce_engage_when_starting_timer = self._node.create_timer(0.2, self.announce_engage_when_starting)
+
         self._srv = self._node.create_service(
             Announce, "/api/vehicle_voice/set/announce", self.announce_service
         )
