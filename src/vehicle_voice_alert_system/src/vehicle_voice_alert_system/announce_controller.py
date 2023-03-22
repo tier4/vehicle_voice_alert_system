@@ -8,6 +8,14 @@ from ament_index_python.packages import get_package_share_directory
 from rclpy.duration import Duration
 from tier4_hmi_msgs.srv import Announce
 
+from autoware_adapi_v1_msgs.msg import (
+    RouteState,
+    MrmState,
+    OperationModeState,
+    MotionState,
+    LocalizationInitializationState,
+)
+
 # The higher the value, the higher the priority
 PRIORITY_DICT = {
     "emergency": 4,
@@ -33,7 +41,6 @@ class AnnounceControllerProperty:
     ):
         super(AnnounceControllerProperty, self).__init__()
         autoware_state_interface.set_autoware_state_callback(self.sub_autoware_state)
-        autoware_state_interface.set_emergency_stopped_callback(self.sub_emergency)
         autoware_state_interface.set_control_mode_callback(self.sub_control_mode)
         autoware_state_interface.set_stop_reason_callback(self.sub_stop_reason)
         autoware_state_interface.set_velocity_callback(self.sub_velocity)
@@ -51,6 +58,7 @@ class AnnounceControllerProperty:
         self._is_auto_running = False
         self._in_driving_state = False
         self._in_emergency_state = False
+        self._emergency_trigger_time = self._node.get_clock().now()
         self._velocity = None
         self._autoware_state = ""
         self._current_motion_state = 0
@@ -58,7 +66,6 @@ class AnnounceControllerProperty:
 
         self._current_announce = ""
         self._pending_announce_list = []
-        self._emergency_trigger_time = self._node.get_clock().now()
         self._wav_object = None
         self._music_object = None
         self._in_stop_status = False
@@ -83,6 +90,7 @@ class AnnounceControllerProperty:
 
         self._node.create_timer(0.5, self.check_playing_callback)
         self._node.create_timer(0.5, self.turn_signal_callback)
+        self._node.create_timer(0.5, self.emergency_checker_callback)
         self._announce_engage_when_starting_timer = self._node.create_timer(
             0.2, self.announce_engage_when_starting
         )
@@ -243,19 +251,17 @@ class AnnounceControllerProperty:
             self._in_driving_state = False
         self._autoware_state = autoware_state
 
-    def sub_emergency(self, emergency_stopped):
-        if emergency_stopped and not self._in_emergency_state:
+    def emergency_checker_callback(self):
+        in_emergency = self._autoware.mrm_behavior == MrmState.EMERGENCY_STOP
+
+        if in_emergency and not self._in_emergency_state:
             self.send_announce("emergency")
-            self._in_emergency_state = True
-            self._emergency_trigger_time = self._node.get_clock().now()
-        elif not emergency_stopped and self._in_emergency_state:
-            self._in_emergency_state = False
-        elif emergency_stopped and self._in_emergency_state and not self._in_stop_status:
-            if self._node.get_clock().now() - self._emergency_trigger_time > Duration(
-                seconds=self._mute_parameter.in_emergency
-            ):
+        elif in_emergency and self._in_emergency_state:
+            if self.check_timeout(self._emergency_trigger_time, self._mute_parameter.in_emergency):
                 self.send_announce("in_emergency")
                 self._emergency_trigger_time = self._node.get_clock().now()
+
+        self._in_emergency_state = in_emergency
 
     def turn_signal_callback(self):
         if not self.check_timeout(self._signal_announce_time, self._mute_parameter.turn_signal):
