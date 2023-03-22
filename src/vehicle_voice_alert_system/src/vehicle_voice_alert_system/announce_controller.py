@@ -23,12 +23,18 @@ PRIORITY_DICT = {
 
 
 class AnnounceControllerProperty:
-    def __init__(self, node, autoware_state_interface, ros_service_interface, parameter_interface):
+    def __init__(
+        self,
+        node,
+        autoware_state_interface,
+        ros_service_interface,
+        parameter_interface,
+        autoware_interface,
+    ):
         super(AnnounceControllerProperty, self).__init__()
         autoware_state_interface.set_autoware_state_callback(self.sub_autoware_state)
         autoware_state_interface.set_emergency_stopped_callback(self.sub_emergency)
         autoware_state_interface.set_control_mode_callback(self.sub_control_mode)
-        autoware_state_interface.set_turn_signal_callback(self.check_turn_signal)
         autoware_state_interface.set_stop_reason_callback(self.sub_stop_reason)
         autoware_state_interface.set_velocity_callback(self.sub_velocity)
         autoware_state_interface.set_motion_state_callback(self.sub_motion_state)
@@ -40,6 +46,7 @@ class AnnounceControllerProperty:
         self._ros_service_interface = ros_service_interface
         self._parameter = parameter_interface.parameter
         self._mute_parameter = parameter_interface.mute_parameter
+        self._autoware = autoware_interface.information
         self.is_auto_mode = False
         self._is_auto_running = False
         self._in_driving_state = False
@@ -74,13 +81,17 @@ class AnnounceControllerProperty:
         elif not self._parameter.skip_default_voice:
             self._running_bgm_file = self._package_path + "/running_music.wav"
 
-        self._check_playing_timer = self._node.create_timer(0.5, self.check_playing_callback)
+        self._node.create_timer(0.5, self.check_playing_callback)
+        self._node.create_timer(0.5, self.turn_signal_callback)
         self._announce_engage_when_starting_timer = self._node.create_timer(
             0.2, self.announce_engage_when_starting
         )
         self._srv = self._node.create_service(
             Announce, "/api/vehicle_voice/set/announce", self.announce_service
         )
+
+    def check_timeout(self, trigger_time, duration):
+        return self._node.get_clock().now() - trigger_time > Duration(seconds=duration)
 
     # TODO: Delete this server when FMS is adapted new ADAPI.
     def announce_service(self, request, response):
@@ -246,17 +257,15 @@ class AnnounceControllerProperty:
                 self.send_announce("in_emergency")
                 self._emergency_trigger_time = self._node.get_clock().now()
 
-    def check_turn_signal(self, turn_signal):
-        if self._node.get_clock().now() - self._signal_announce_time < Duration(
-            seconds=self._mute_parameter.turn_signal
-        ):
+    def turn_signal_callback(self):
+        if not self.check_timeout(self._signal_announce_time, self._mute_parameter.turn_signal):
             return
         elif self._in_emergency_state or self._in_stop_status:
             return
 
-        if turn_signal == 1:
+        if self._autoware.turn_signal == 1:
             self.send_announce("turning_left")
-        if turn_signal == 2:
+        if self._autoware.turn_signal == 2:
             self.send_announce("turning_right")
 
         self._signal_announce_time = self._node.get_clock().now()
@@ -264,7 +273,9 @@ class AnnounceControllerProperty:
     # 停止する予定を取得
     def sub_stop_reason(self, stop_reason):
         if self._autoware_state != "Driving":
-            self._node.get_logger().warning("The vehicle is not in driving state, do not announce")
+            self._node.get_logger().warning(
+                "The vehicle is not in driving state, do not announce", throttle_duration_sec=10
+            )
             return
 
         stop_reasons = stop_reason.stop_reasons
