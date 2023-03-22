@@ -41,10 +41,6 @@ class AnnounceControllerProperty:
         super(AnnounceControllerProperty, self).__init__()
         autoware_state_interface.set_autoware_state_callback(self.sub_autoware_state)
         autoware_state_interface.set_stop_reason_callback(self.sub_stop_reason)
-        autoware_state_interface.set_motion_state_callback(self.sub_motion_state)
-        autoware_state_interface.set_localization_initialization_state_callback(
-            self.sub_localization_initialization_state
-        )
 
         self._node = node
         self._ros_service_interface = ros_service_interface
@@ -55,9 +51,8 @@ class AnnounceControllerProperty:
         self._in_emergency_state = False
         self._emergency_trigger_time = self._node.get_clock().now()
         self._autoware_state = ""
-        self._current_motion_state = 0
         self._prev_motion_state = 0
-
+        self._accept_start_time = self._node.get_clock().now()
         self._current_announce = ""
         self._pending_announce_list = []
         self._wav_object = None
@@ -65,8 +60,6 @@ class AnnounceControllerProperty:
         self._in_stop_status = False
         self._signal_announce_time = self._node.get_clock().now()
         self._stop_reason_announce_time = self._node.get_clock().now()
-        self._start_request_announce_time = self._node.get_clock().now()
-        self._accept_start_time = self._node.get_clock().now()
         self._bgm_announce_time = self._node.get_clock().now()
         self._restart_time = self._node.get_clock().now()
 
@@ -137,37 +130,32 @@ class AnnounceControllerProperty:
     def announce_engage_when_starting(self):
         try:
             if (
-                self._current_motion_state == 2 or self._current_motion_state == 3
-            ) and self._prev_motion_state == 1:
-                if self._node.get_clock().now() - self._start_request_announce_time > Duration(
-                    seconds=self._mute_parameter.restart_engage
-                ):
-                    self._start_request_announce_time = self._node.get_clock().now()
-                    self.send_announce("departure")
-                else:
-                    self._node.get_logger().warning("skip announce restart engage")
+                self._autoware.localization_init_state
+                == LocalizationInitializationState.UNINITIALIZED
+            ):
+                self._prev_motion_state = 0
+                return
 
-                if self._current_motion_state == 2:
-                    self._ros_service_interface.accept_start()
+            if (
+                self._autoware.motion_state in [MotionState.STARTING, MotionState.MOVING]
+                and self._prev_motion_state == 1
+            ):
+                self.send_announce("departure")
 
-                # To reset the stop reason announce, so that it can announce if vehicle reengage
-                self._stop_reason_announce_time = self._node.get_clock().now() - Duration(
-                    seconds=self._mute_parameter.restart_engage
-                )
+                if self._autoware.motion_state == MotionState.STARTING:
+                    self._service_interface.accept_start()
 
             # Check to see if it has not stopped waiting for start acceptance
-            if self._current_motion_state != 2:
+            if self._autoware.motion_state != MotionState.STARTING:
                 self._accept_start_time = self._node.get_clock().now()
 
             # Send again when stopped in starting state for a certain period of time
-            if (
-                self._current_motion_state == 2
-                and self._node.get_clock().now() - self._accept_start_time
-                > Duration(seconds=self._mute_parameter.accept_start)
+            if self._autoware.motion_state == MotionState.STARTING and self.check_timeout(
+                self._accept_start_time, self._parameter.accept_start
             ):
-                self._ros_service_interface.accept_start()
+                self._service_interface.accept_start()
 
-            self._prev_motion_state = self._current_motion_state
+            self._prev_motion_state = self._autoware.motion_state
         except Exception as e:
             self._node.get_logger().error("not able to play the announce, ERROR: {}".format(str(e)))
 

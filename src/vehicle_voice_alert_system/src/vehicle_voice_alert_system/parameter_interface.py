@@ -12,12 +12,11 @@ class GeneralParameter:
     mute_overlap_bgm: bool = False
     driving_velocity_threshold: float = 0.2
     primary_voice_folder_path: str = ""
+    accept_start: float = 0.0
 
 
 @dataclass
 class MuteParameter:
-    restart_engage: float = 0.0
-    accept_start: float = 0.0
     stop_reason: float = 0.0
     turn_signal: float = 0.0
     in_emergency: float = 0.0
@@ -34,6 +33,7 @@ class ParameterInterface:
         node.declare_parameter("mute_overlap_bgm", False)
         node.declare_parameter("driving_velocity_threshold", 0.2)
         node.declare_parameter("primary_voice_folder_path", "")
+        node.declare_parameter("accept_start", 0.0)
 
         self.parameter.manual_driving_bgm = (
             node.get_parameter("manual_driving_bgm").get_parameter_value().bool_value
@@ -50,9 +50,10 @@ class ParameterInterface:
         self.parameter.primary_voice_folder_path = (
             node.get_parameter("primary_voice_folder_path").get_parameter_value().string_value
         )
+        self.parameter.accept_start = (
+            node.get_parameter("accept_start").get_parameter_value().double_value
+        )
 
-        node.declare_parameter("mute_timeout.restart_engage", 0.0)
-        node.declare_parameter("mute_timeout.accept_start", 0.0)
         node.declare_parameter("mute_timeout.stop_reason", 0.0)
         node.declare_parameter("mute_timeout.turn_signal", 0.0)
         node.declare_parameter("mute_timeout.in_emergency", 0.0)
