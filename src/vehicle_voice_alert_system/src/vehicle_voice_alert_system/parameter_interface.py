@@ -13,6 +13,7 @@ class GeneralParameter:
     driving_velocity_threshold: float = 0.2
     primary_voice_folder_path: str = ""
 
+
 @dataclass
 class MuteParameter:
     restart_engage: float = 0.0
@@ -44,7 +45,9 @@ class ParameterInterface:
             self._node.get_parameter("mute_overlap_bgm").get_parameter_value().bool_value
         )
         self.parameter.driving_velocity_threshold = (
-            self._node.get_parameter("driving_velocity_threshold").get_parameter_value().double_value
+            self._node.get_parameter("driving_velocity_threshold")
+            .get_parameter_value()
+            .double_value
         )
         self.parameter.primary_voice_folder_path = (
             self._node.get_parameter("primary_voice_folder_path").get_parameter_value().string_value
@@ -59,4 +62,8 @@ class ParameterInterface:
         mute_timeout_prefix = self._node.get_parameters_by_prefix("mute_timeout")
 
         for key in mute_timeout_prefix.keys():
-            setattr(self.mute_parameter, key, mute_timeout_prefix[key].get_parameter_value().double_value)
+            setattr(
+                self.mute_parameter,
+                key,
+                mute_timeout_prefix[key].get_parameter_value().double_value,
+            )

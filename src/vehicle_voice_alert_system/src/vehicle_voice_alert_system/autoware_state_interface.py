@@ -7,6 +7,7 @@ from tier4_api_msgs.msg import AwapiAutowareStatus, AwapiVehicleStatus
 from autoware_adapi_v1_msgs.msg import MotionState, LocalizationInitializationState
 from autoware_auto_system_msgs.msg import HazardStatusStamped
 
+
 class AutowareStateInterface:
     def __init__(self, node):
         self.autoware_state_callback_list = []
@@ -42,10 +43,16 @@ class AutowareStateInterface:
             MotionState, "/api/motion/state", self.motion_state_callback, api_qos
         )
         self._sub_hazard_status = node.create_subscription(
-            HazardStatusStamped, "/system/emergency/hazard_status", self.sub_hazard_status_callback, 10
+            HazardStatusStamped,
+            "/system/emergency/hazard_status",
+            self.sub_hazard_status_callback,
+            10,
         )
         self._sub_localiztion_initializtion_state = node.create_subscription(
-            LocalizationInitializationState, "/api/localization/initialization_state", self.sub_localization_initialization_state_callback, 10
+            LocalizationInitializationState,
+            "/api/localization/initialization_state",
+            self.sub_localization_initialization_state_callback,
+            10,
         )
         self._autoware_status_time = self._node.get_clock().now()
         self._vehicle_status_time = self._node.get_clock().now()

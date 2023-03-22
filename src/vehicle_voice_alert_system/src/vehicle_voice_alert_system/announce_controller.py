@@ -32,7 +32,9 @@ class AnnounceControllerProperty:
         autoware_state_interface.set_stop_reason_callback(self.sub_stop_reason)
         autoware_state_interface.set_velocity_callback(self.sub_velocity)
         autoware_state_interface.set_motion_state_callback(self.sub_motion_state)
-        autoware_state_interface.set_localization_initialization_state_callback(self.sub_localization_initialization_state)
+        autoware_state_interface.set_localization_initialization_state_callback(
+            self.sub_localization_initialization_state
+        )
 
         self._node = node
         self._ros_service_interface = ros_service_interface
@@ -60,19 +62,22 @@ class AnnounceControllerProperty:
         self._bgm_announce_time = self._node.get_clock().now()
         self._restart_time = self._node.get_clock().now()
 
-
         self._package_path = (
             get_package_share_directory("vehicle_voice_alert_system") + "/resource/sound"
         )
 
         self._running_bgm_file = ""
         if path.exists(self._parameter.primary_voice_folder_path + "/running_music.wav"):
-            self._running_bgm_file = self._parameter.primary_voice_folder_path + "/running_music.wav"
+            self._running_bgm_file = (
+                self._parameter.primary_voice_folder_path + "/running_music.wav"
+            )
         elif not self._parameter.skip_default_voice:
             self._running_bgm_file = self._package_path + "/running_music.wav"
 
         self._check_playing_timer = self._node.create_timer(0.5, self.check_playing_callback)
-        self._announce_engage_when_starting_timer = self._node.create_timer(0.2, self.announce_engage_when_starting)
+        self._announce_engage_when_starting_timer = self._node.create_timer(
+            0.2, self.announce_engage_when_starting
+        )
         self._srv = self._node.create_service(
             Announce, "/api/vehicle_voice/set/announce", self.announce_service
         )
@@ -90,10 +95,16 @@ class AnnounceControllerProperty:
             if not self._running_bgm_file:
                 return
 
-            if self._node.get_clock().now() - self._bgm_announce_time < Duration(seconds=self._mute_parameter.driving_bgm):
+            if self._node.get_clock().now() - self._bgm_announce_time < Duration(
+                seconds=self._mute_parameter.driving_bgm
+            ):
                 return
 
-            if self._parameter.mute_overlap_bgm and self._wav_object and self._wav_object.is_playing():
+            if (
+                self._parameter.mute_overlap_bgm
+                and self._wav_object
+                and self._wav_object.is_playing()
+            ):
                 self._bgm_announce_time = self._node.get_clock().now()
                 return
 
@@ -101,7 +112,14 @@ class AnnounceControllerProperty:
                 if not self._music_object or not self._music_object.is_playing():
                     sound = WaveObject.from_wave_file(self._running_bgm_file)
                     self._music_object = sound.play()
-            elif self._parameter.manual_driving_bgm and not self.is_auto_mode and (self._velocity > self._parameter.driving_velocity_threshold or self._velocity < - self._parameter.driving_velocity_threshold):
+            elif (
+                self._parameter.manual_driving_bgm
+                and not self.is_auto_mode
+                and (
+                    self._velocity > self._parameter.driving_velocity_threshold
+                    or self._velocity < -self._parameter.driving_velocity_threshold
+                )
+            ):
                 if not self._music_object or not self._music_object.is_playing():
                     sound = WaveObject.from_wave_file(self._running_bgm_file)
                     self._music_object = sound.play()
@@ -117,7 +135,9 @@ class AnnounceControllerProperty:
 
     def announce_engage_when_starting(self):
         try:
-            if (self._current_motion_state == 2 or self._current_motion_state == 3) and self._prev_motion_state == 1:
+            if (
+                self._current_motion_state == 2 or self._current_motion_state == 3
+            ) and self._prev_motion_state == 1:
                 if self._node.get_clock().now() - self._start_request_announce_time > Duration(
                     seconds=self._mute_parameter.restart_engage
                 ):
@@ -129,18 +149,21 @@ class AnnounceControllerProperty:
                 if self._current_motion_state == 2:
                     self._ros_service_interface.accept_start()
 
-
                 # To reset the stop reason announce, so that it can announce if vehicle reengage
-                self._stop_reason_announce_time = self._node.get_clock().now()-Duration(seconds=self._mute_parameter.restart_engage)
+                self._stop_reason_announce_time = self._node.get_clock().now() - Duration(
+                    seconds=self._mute_parameter.restart_engage
+                )
 
             # Check to see if it has not stopped waiting for start acceptance
             if self._current_motion_state != 2:
                 self._accept_start_time = self._node.get_clock().now()
 
             # Send again when stopped in starting state for a certain period of time
-            if self._current_motion_state == 2 and self._node.get_clock().now() - self._accept_start_time > Duration(
-                    seconds=self._mute_parameter.accept_start
-                ):
+            if (
+                self._current_motion_state == 2
+                and self._node.get_clock().now() - self._accept_start_time
+                > Duration(seconds=self._mute_parameter.accept_start)
+            ):
                 self._ros_service_interface.accept_start()
 
             self._prev_motion_state = self._current_motion_state
@@ -160,17 +183,25 @@ class AnnounceControllerProperty:
             self._node.get_logger().error("not able to check the current playing: " + str(e))
 
     def play_sound(self, message):
-        if self._parameter.mute_overlap_bgm and self._music_object and self._music_object.is_playing():
+        if (
+            self._parameter.mute_overlap_bgm
+            and self._music_object
+            and self._music_object.is_playing()
+        ):
             self._music_object.stop()
 
         if path.exists("{}/{}.wav".format(self._parameter.primary_voice_folder_path, message)):
-            sound = WaveObject.from_wave_file("{}/{}.wav".format(self._parameter.primary_voice_folder_path, message))
+            sound = WaveObject.from_wave_file(
+                "{}/{}.wav".format(self._parameter.primary_voice_folder_path, message)
+            )
             self._wav_object = sound.play()
         elif not self._parameter.skip_default_voice:
             sound = WaveObject.from_wave_file("{}/{}.wav".format(self._package_path, message))
             self._wav_object = sound.play()
         else:
-            self._node.get_logger().info("Didn't found the voice in the primary voice folder, and skip default voice is enabled")
+            self._node.get_logger().info(
+                "Didn't found the voice in the primary voice folder, and skip default voice is enabled"
+            )
 
     def send_announce(self, message):
         priority = PRIORITY_DICT.get(message, 0)
@@ -209,12 +240,16 @@ class AnnounceControllerProperty:
         elif not emergency_stopped and self._in_emergency_state:
             self._in_emergency_state = False
         elif emergency_stopped and self._in_emergency_state and not self._in_stop_status:
-            if self._node.get_clock().now() - self._emergency_trigger_time > Duration(seconds=self._mute_parameter.in_emergency):
+            if self._node.get_clock().now() - self._emergency_trigger_time > Duration(
+                seconds=self._mute_parameter.in_emergency
+            ):
                 self.send_announce("in_emergency")
                 self._emergency_trigger_time = self._node.get_clock().now()
 
     def check_turn_signal(self, turn_signal):
-        if self._node.get_clock().now() - self._signal_announce_time < Duration(seconds=self._mute_parameter.turn_signal):
+        if self._node.get_clock().now() - self._signal_announce_time < Duration(
+            seconds=self._mute_parameter.turn_signal
+        ):
             return
         elif self._in_emergency_state or self._in_stop_status:
             return
