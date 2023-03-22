@@ -39,17 +39,13 @@ class AnnounceControllerProperty:
         autoware_interface,
     ):
         super(AnnounceControllerProperty, self).__init__()
-        autoware_state_interface.set_autoware_state_callback(self.sub_autoware_state)
-
         self._node = node
         self._ros_service_interface = ros_service_interface
         self._parameter = parameter_interface.parameter
         self._mute_parameter = parameter_interface.mute_parameter
         self._autoware = autoware_interface.information
-        self._in_driving_state = False
         self._in_emergency_state = False
         self._emergency_trigger_time = self._node.get_clock().now()
-        self._autoware_state = ""
         self._prev_motion_state = 0
         self._accept_start_time = self._node.get_clock().now()
         self._current_announce = ""
@@ -57,6 +53,7 @@ class AnnounceControllerProperty:
         self._wav_object = None
         self._music_object = None
         self._in_stop_status = False
+        self._in_driving_state = False
         self._signal_announce_time = self._node.get_clock().now()
         self._stop_reason_announce_time = self._node.get_clock().now()
         self._bgm_announce_time = self._node.get_clock().now()
@@ -83,6 +80,9 @@ class AnnounceControllerProperty:
     def check_timeout(self, trigger_time, duration):
         return self._node.get_clock().now() - trigger_time > Duration(seconds=duration)
 
+    def check_in_autonomous(self):
+        return self._autoware.operation_mode == OperationModeState.AUTONOMOUS
+
     def process_running_music(self):
         try:
             if not self._running_bgm_file:
@@ -101,7 +101,7 @@ class AnnounceControllerProperty:
                 self._bgm_announce_time = self._node.get_clock().now()
                 return
 
-            if self._in_driving_state and not self._in_emergency_state:
+            if self.check_in_autonomous() and not self._in_emergency_state:
                 if not self._music_object or not self._music_object.is_playing():
                     sound = WaveObject.from_wave_file(self._running_bgm_file)
                     self._music_object = sound.play()
@@ -118,6 +118,12 @@ class AnnounceControllerProperty:
             else:
                 if self._music_object and self._music_object.is_playing():
                     self._music_object.stop()
+
+                if self._autoware.autoware_control and self._in_driving_state:
+                    # Skip announce if is in manual driving
+                    self.send_announce("stop")
+
+            self._in_driving_state = self.check_in_autonomous()
             self._bgm_announce_time = self._node.get_clock().now()
         except Exception as e:
             self._node.get_logger().error("not able to check the pending playing list: " + str(e))
@@ -200,19 +206,6 @@ class AnnounceControllerProperty:
             self.play_sound(message)
         self._current_announce = message
 
-    def sub_autoware_state(self, autoware_state):
-        if autoware_state == "Driving" and not self._in_driving_state:
-            self._in_driving_state = True
-        elif (
-            autoware_state in ["WaitingForRoute", "WaitingForEngage", "ArrivedGoal", "Planning"]
-            and self._in_driving_state
-        ):
-            if self._autoware.autoware_control:
-                # Skip announce if is in manual driving
-                self.send_announce("stop")
-            self._in_driving_state = False
-        self._autoware_state = autoware_state
-
     def emergency_checker_callback(self):
         in_emergency = self._autoware.mrm_behavior == MrmState.EMERGENCY_STOP
 
@@ -240,7 +233,7 @@ class AnnounceControllerProperty:
 
     # 停止する予定を取得
     def stop_reason_checker_callback(self):
-        if self._autoware_state != "Driving":
+        if not self.check_in_autonomous():
             self._node.get_logger().warning(
                 "The vehicle is not in driving state, do not announce", throttle_duration_sec=10
             )
