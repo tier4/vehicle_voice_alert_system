@@ -40,7 +40,6 @@ class AnnounceControllerProperty:
     ):
         super(AnnounceControllerProperty, self).__init__()
         autoware_state_interface.set_autoware_state_callback(self.sub_autoware_state)
-        autoware_state_interface.set_stop_reason_callback(self.sub_stop_reason)
 
         self._node = node
         self._ros_service_interface = ros_service_interface
@@ -78,9 +77,8 @@ class AnnounceControllerProperty:
         self._node.create_timer(0.5, self.check_playing_callback)
         self._node.create_timer(0.5, self.turn_signal_callback)
         self._node.create_timer(0.5, self.emergency_checker_callback)
-        self._announce_engage_when_starting_timer = self._node.create_timer(
-            0.2, self.announce_engage_when_starting
-        )
+        self._node.create_timer(0.5, self.stop_reason_checker_callback)
+        self._node.create_timer(0.2, self.announce_engage_when_starting)
 
     def check_timeout(self, trigger_time, duration):
         return self._node.get_clock().now() - trigger_time > Duration(seconds=duration)
@@ -241,14 +239,14 @@ class AnnounceControllerProperty:
         self._signal_announce_time = self._node.get_clock().now()
 
     # 停止する予定を取得
-    def sub_stop_reason(self, stop_reason):
+    def stop_reason_checker_callback(self):
         if self._autoware_state != "Driving":
             self._node.get_logger().warning(
                 "The vehicle is not in driving state, do not announce", throttle_duration_sec=10
             )
             return
 
-        stop_reasons = stop_reason.stop_reasons
+        stop_reasons = self._autoware.stop_reasons
         shortest_stop_reason = ""
         shortest_distance = -1
         for stop_reason in stop_reasons:
@@ -262,8 +260,8 @@ class AnnounceControllerProperty:
 
         # 音声の通知
         if shortest_stop_reason != "" and shortest_distance > -1 and shortest_distance < 2:
-            if self._node.get_clock().now() - self._stop_reason_announce_time < Duration(
-                seconds=self._mute_parameter.stop_reason
+            if not self.check_timeout(
+                self._stop_reason_announce_time, self._mute_parameter.stop_reason
             ):
                 return
 
