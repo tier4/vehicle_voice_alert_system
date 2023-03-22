@@ -33,7 +33,6 @@ class AnnounceControllerProperty:
     def __init__(
         self,
         node,
-        autoware_state_interface,
         ros_service_interface,
         parameter_interface,
         autoware_interface,
