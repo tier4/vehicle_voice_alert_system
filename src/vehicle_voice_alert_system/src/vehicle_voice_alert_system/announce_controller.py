@@ -40,9 +40,7 @@ class AnnounceControllerProperty:
     ):
         super(AnnounceControllerProperty, self).__init__()
         autoware_state_interface.set_autoware_state_callback(self.sub_autoware_state)
-        autoware_state_interface.set_control_mode_callback(self.sub_control_mode)
         autoware_state_interface.set_stop_reason_callback(self.sub_stop_reason)
-        autoware_state_interface.set_velocity_callback(self.sub_velocity)
         autoware_state_interface.set_motion_state_callback(self.sub_motion_state)
         autoware_state_interface.set_localization_initialization_state_callback(
             self.sub_localization_initialization_state
@@ -53,11 +51,9 @@ class AnnounceControllerProperty:
         self._parameter = parameter_interface.parameter
         self._mute_parameter = parameter_interface.mute_parameter
         self._autoware = autoware_interface.information
-        self.is_auto_mode = False
         self._in_driving_state = False
         self._in_emergency_state = False
         self._emergency_trigger_time = self._node.get_clock().now()
-        self._velocity = None
         self._autoware_state = ""
         self._current_motion_state = 0
         self._prev_motion_state = 0
@@ -120,10 +116,9 @@ class AnnounceControllerProperty:
                     self._music_object = sound.play()
             elif (
                 self._parameter.manual_driving_bgm
-                and not self.is_auto_mode
-                and (
-                    self._velocity > self._parameter.driving_velocity_threshold
-                    or self._velocity < -self._parameter.driving_velocity_threshold
+                and not self._autoware.autoware_control
+                and not self.in_range(
+                    self._autoware.velocity, self._parameter.driving_velocity_threshold
                 )
             ):
                 if not self._music_object or not self._music_object.is_playing():
@@ -136,8 +131,8 @@ class AnnounceControllerProperty:
         except Exception as e:
             self._node.get_logger().error("not able to check the pending playing list: " + str(e))
 
-    def sub_control_mode(self, control_mode):
-        self.is_auto_mode = control_mode == 1
+    def in_range(self, input_value, range_value):
+        return -range_value <= input_value <= range_value
 
     def announce_engage_when_starting(self):
         try:
@@ -219,9 +214,6 @@ class AnnounceControllerProperty:
             self.play_sound(message)
         self._current_announce = message
 
-    def sub_velocity(self, velocity):
-        self._velocity = velocity
-
     def sub_autoware_state(self, autoware_state):
         if autoware_state == "Driving" and not self._in_driving_state:
             self._in_driving_state = True
@@ -229,7 +221,7 @@ class AnnounceControllerProperty:
             autoware_state in ["WaitingForRoute", "WaitingForEngage", "ArrivedGoal", "Planning"]
             and self._in_driving_state
         ):
-            if self.is_auto_mode:
+            if self._autoware.autoware_control:
                 # Skip announce if is in manual driving
                 self.send_announce("stop")
             self._in_driving_state = False
@@ -296,7 +288,7 @@ class AnnounceControllerProperty:
                     "BlindSpot",
                     "BlockedByObstacles",
                 ]
-                and self._velocity == 0
+                and self._autoware.velocity == 0
             ):
                 self._in_stop_status = True
                 self.send_announce("obstacle_stop")
