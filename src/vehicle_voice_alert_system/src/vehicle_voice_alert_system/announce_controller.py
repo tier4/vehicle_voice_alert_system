@@ -6,7 +6,6 @@ from os import path
 from simpleaudio import WaveObject
 from ament_index_python.packages import get_package_share_directory
 from rclpy.duration import Duration
-from tier4_hmi_msgs.srv import Announce
 
 from autoware_adapi_v1_msgs.msg import (
     RouteState,
@@ -55,7 +54,6 @@ class AnnounceControllerProperty:
         self._mute_parameter = parameter_interface.mute_parameter
         self._autoware = autoware_interface.information
         self.is_auto_mode = False
-        self._is_auto_running = False
         self._in_driving_state = False
         self._in_emergency_state = False
         self._emergency_trigger_time = self._node.get_clock().now()
@@ -94,20 +92,9 @@ class AnnounceControllerProperty:
         self._announce_engage_when_starting_timer = self._node.create_timer(
             0.2, self.announce_engage_when_starting
         )
-        self._srv = self._node.create_service(
-            Announce, "/api/vehicle_voice/set/announce", self.announce_service
-        )
 
     def check_timeout(self, trigger_time, duration):
         return self._node.get_clock().now() - trigger_time > Duration(seconds=duration)
-
-    # TODO: Delete this server when FMS is adapted new ADAPI.
-    def announce_service(self, request, response):
-        try:
-            pass
-        except Exception as e:
-            self._node.get_logger().error("not able to play the announce, ERROR: {}".format(str(e)))
-        return response
 
     def process_running_music(self):
         try:
@@ -234,8 +221,6 @@ class AnnounceControllerProperty:
 
     def sub_velocity(self, velocity):
         self._velocity = velocity
-        if velocity > 0 and self.is_auto_mode and self._in_driving_state:
-            self._is_auto_running = True
 
     def sub_autoware_state(self, autoware_state):
         if autoware_state == "Driving" and not self._in_driving_state:
@@ -247,7 +232,6 @@ class AnnounceControllerProperty:
             if self.is_auto_mode:
                 # Skip announce if is in manual driving
                 self.send_announce("stop")
-            self._is_auto_running = False
             self._in_driving_state = False
         self._autoware_state = autoware_state
 
