@@ -296,11 +296,3 @@ class AnnounceControllerProperty:
                 self._in_stop_status = False
         else:
             self._in_stop_status = False
-
-    def sub_motion_state(self, motion_state):
-        self._current_motion_state = motion_state
-
-    def sub_localization_initialization_state(self, initialization_state):
-        if initialization_state == 1:
-            self._current_motion_state = 0
-            self._prev_motion_state = 0
