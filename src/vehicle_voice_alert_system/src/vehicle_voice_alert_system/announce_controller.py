@@ -268,9 +268,7 @@ class AnnounceControllerProperty:
                 ]
                 and self._autoware.velocity == 0
             ):
-                self._in_stop_status = True
-                self.send_announce("obstacle_stop")
-                self._stop_reason_announce_time = self._node.get_clock().now()
+                self.announce_stop_reason("obstacle_stop")
             elif shortest_stop_reason in [
                 "Intersection",
                 "MergeFromPrivateRoad",
@@ -281,10 +279,13 @@ class AnnounceControllerProperty:
                 "TrafficLight",
                 "BlindSpot",
             ]:
-                self.send_announce("temporary_stop")
-                self._in_stop_status = True
-                self._stop_reason_announce_time = self._node.get_clock().now()
+                self.announce_stop_reason("temporary_stop")
             else:
                 self._in_stop_status = False
         else:
             self._in_stop_status = False
+
+    def announce_stop_reason(self, file):
+        self._in_stop_status = True
+        self.send_announce(file)
+        self._stop_reason_announce_time = self._node.get_clock().now()
