@@ -74,13 +74,7 @@ class AnnounceControllerProperty:
             get_package_share_directory("vehicle_voice_alert_system") + "/resource/sound"
         )
 
-        self._running_bgm_file = ""
-        if path.exists(self._parameter.primary_voice_folder_path + "/running_music.wav"):
-            self._running_bgm_file = (
-                self._parameter.primary_voice_folder_path + "/running_music.wav"
-            )
-        elif not self._parameter.skip_default_voice:
-            self._running_bgm_file = self._package_path + "/running_music.wav"
+        self._running_bgm_file = self.get_filepath("running_music")
 
         self._node.create_timer(0.5, self.check_playing_callback)
         self._node.create_timer(0.5, self.turn_signal_callback)
@@ -104,6 +98,17 @@ class AnnounceControllerProperty:
 
     def check_in_autonomous(self):
         return self._autoware.operation_mode == OperationModeState.AUTONOMOUS
+
+    def get_filepath(self, filename):
+        primary_voice_folder_path = (
+            self._parameter.primary_voice_folder_path + "/" + filename + ".wav"
+        )
+        if path.exists(primary_voice_folder_path):
+            return primary_voice_folder_path
+        elif not self._parameter.skip_default_voice:
+            return self._package_path + "/" + filename + ".wav"
+        else:
+            return ""
 
     def process_running_music(self):
         try:
@@ -146,7 +151,9 @@ class AnnounceControllerProperty:
             self._in_driving_state = self.check_in_autonomous()
             self.set_timeout("driving_bgm")
         except Exception as e:
-            self._node.get_logger().error("not able to check the pending playing list: " + str(e))
+            self._node.get_logger().error(
+                "not able to check the pending playing list: " + str(e), throttle_duration_sec=10
+            )
 
     def in_range(self, input_value, range_value):
         return -range_value <= input_value <= range_value
@@ -203,13 +210,9 @@ class AnnounceControllerProperty:
         ):
             self._music_object.stop()
 
-        if path.exists("{}/{}.wav".format(self._parameter.primary_voice_folder_path, message)):
-            sound = WaveObject.from_wave_file(
-                "{}/{}.wav".format(self._parameter.primary_voice_folder_path, message)
-            )
-            self._wav_object = sound.play()
-        elif not self._parameter.skip_default_voice:
-            sound = WaveObject.from_wave_file("{}/{}.wav".format(self._package_path, message))
+        filepath = self.get_filepath(message)
+        if filepath:
+            sound = WaveObject.from_wave_file(filepath)
             self._wav_object = sound.play()
         else:
             self._node.get_logger().info(
