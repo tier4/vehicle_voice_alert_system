@@ -26,7 +26,7 @@ sudo pip3 install simpleaudio
 ## build
 
 ```bash
-cd vehicle_voice_alert_ystem
+cd vehicle_voice_alert_system
 colcon build
 ```
 
@@ -40,7 +40,7 @@ bash start.sh
 ## rebuild
 
 ```bash
-cd vehicle_voice_alert_ystem
+cd vehicle_voice_alert_system
 colcon build
 ```
 
