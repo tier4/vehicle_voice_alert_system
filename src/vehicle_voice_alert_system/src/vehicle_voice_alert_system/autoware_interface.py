@@ -44,40 +44,40 @@ class AutowareInterface:
             durability=rclpy.qos.QoSDurabilityPolicy.TRANSIENT_LOCAL,
         )
 
-        self._sub_operation_mode = node.create_subscription(
+        node.create_subscription(
             OperationModeState,
             "/api/operation_mode/state",
             self.sub_operation_mode_callback,
             api_qos,
         )
-        self._sub_routing_state = node.create_subscription(
+        node.create_subscription(
             RouteState,
             "/api/routing/state",
             self.sub_routing_state_callback,
             api_qos,
         )
-        self._sub_mrm = node.create_subscription(
+        node.create_subscription(
             MrmState,
             "/api/fail_safe/mrm_state",
             self.sub_mrm_callback,
             sub_qos,
         )
-        self._sub_vehicle_state = node.create_subscription(
+        node.create_subscription(
             AwapiVehicleStatus,
             "/awapi/vehicle/get/status",
             self.sub_vehicle_state_callback,
             sub_qos,
         )
-        self._sub_autoware_state = node.create_subscription(
+        node.create_subscription(
             AwapiAutowareStatus,
             "/awapi/autoware/get/status",
             self.sub_autoware_state_callback,
             sub_qos,
         )
-        self._sub_motion_state = node.create_subscription(
+        node.create_subscription(
             MotionState, "/api/motion/state", self.sub_motion_state_callback, api_qos
         )
-        self._sub_localiztion_initializtion_state = node.create_subscription(
+        node.create_subscription(
             LocalizationInitializationState,
             "/api/localization/initialization_state",
             self.sub_localization_initialization_state_callback,

@@ -15,7 +15,7 @@ refer to here
 
 <https://autowarefoundation.github.io/autoware-documentation/main/installation/>
 
-### requried library
+### Required library
 
 - simpleaudio
 
@@ -44,7 +44,7 @@ cd vehicle_voice_alert_ystem
 colcon build
 ```
 
-## Sound defination
+## Sound definition
 
 - The sound playing currently only support **wav** format
 
