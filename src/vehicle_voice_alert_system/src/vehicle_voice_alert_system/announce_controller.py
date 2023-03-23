@@ -3,9 +3,11 @@
 # This Python file uses the following encoding: utf-8
 
 from os import path
+from dataclasses import dataclass
 from simpleaudio import WaveObject
 from ament_index_python.packages import get_package_share_directory
 from rclpy.duration import Duration
+from rclpy.time import Time
 
 from autoware_adapi_v1_msgs.msg import (
     RouteState,
@@ -29,6 +31,15 @@ PRIORITY_DICT = {
 }
 
 
+@dataclass
+class TimeoutClass:
+    stop_reason: Time
+    turn_signal: Time
+    in_emergency: Time
+    driving_bgm: Time
+    accept_start: Time
+
+
 class AnnounceControllerProperty:
     def __init__(
         self,
@@ -43,20 +54,21 @@ class AnnounceControllerProperty:
         self._parameter = parameter_interface.parameter
         self._mute_parameter = parameter_interface.mute_parameter
         self._autoware = autoware_interface.information
+        self._timeout = TimeoutClass(
+            node.get_clock().now(),
+            node.get_clock().now(),
+            node.get_clock().now(),
+            node.get_clock().now(),
+            node.get_clock().now(),
+        )
         self._in_emergency_state = False
-        self._emergency_trigger_time = self._node.get_clock().now()
         self._prev_motion_state = 0
-        self._accept_start_time = self._node.get_clock().now()
         self._current_announce = ""
         self._pending_announce_list = []
         self._wav_object = None
         self._music_object = None
         self._in_stop_status = False
         self._in_driving_state = False
-        self._signal_announce_time = self._node.get_clock().now()
-        self._stop_reason_announce_time = self._node.get_clock().now()
-        self._bgm_announce_time = self._node.get_clock().now()
-        self._restart_time = self._node.get_clock().now()
 
         self._package_path = (
             get_package_share_directory("vehicle_voice_alert_system") + "/resource/sound"
@@ -76,8 +88,19 @@ class AnnounceControllerProperty:
         self._node.create_timer(0.5, self.stop_reason_checker_callback)
         self._node.create_timer(0.2, self.announce_engage_when_starting)
 
-    def check_timeout(self, trigger_time, duration):
-        return self._node.get_clock().now() - trigger_time > Duration(seconds=duration)
+    def set_timeout(self, timeout_attr):
+        setattr(self._timeout, timeout_attr, self._node.get_clock().now())
+
+    def reset_all_timeout(self):
+        for attr in self._timeout.__dict__.keys():
+            trigger_time = getattr(self._timeout, attr)
+            duration = getattr(self._mute_parameter, attr)
+            setattr(self._timeout, attr, self._node.get_clock().now() - Duration(seconds=duration))
+
+    def not_timeout(self, timeout_attr):
+        trigger_time = getattr(self._timeout, timeout_attr)
+        duration = getattr(self._mute_parameter, timeout_attr)
+        return self._node.get_clock().now() - trigger_time < Duration(seconds=duration)
 
     def check_in_autonomous(self):
         return self._autoware.operation_mode == OperationModeState.AUTONOMOUS
@@ -87,9 +110,7 @@ class AnnounceControllerProperty:
             if not self._running_bgm_file:
                 return
 
-            if self._node.get_clock().now() - self._bgm_announce_time < Duration(
-                seconds=self._mute_parameter.driving_bgm
-            ):
+            if self.not_timeout("driving_bgm"):
                 return
 
             if (
@@ -97,7 +118,7 @@ class AnnounceControllerProperty:
                 and self._wav_object
                 and self._wav_object.is_playing()
             ):
-                self._bgm_announce_time = self._node.get_clock().now()
+                self.set_timeout("driving_bgm")
                 return
 
             if self.check_in_autonomous() and not self._in_emergency_state:
@@ -123,7 +144,7 @@ class AnnounceControllerProperty:
                     self.send_announce("stop")
 
             self._in_driving_state = self.check_in_autonomous()
-            self._bgm_announce_time = self._node.get_clock().now()
+            self.set_timeout("driving_bgm")
         except Exception as e:
             self._node.get_logger().error("not able to check the pending playing list: " + str(e))
 
@@ -144,17 +165,17 @@ class AnnounceControllerProperty:
                 and self._prev_motion_state == 1
             ):
                 self.send_announce("departure")
-
+                self.reset_all_timeout()
                 if self._autoware.motion_state == MotionState.STARTING:
                     self._service_interface.accept_start()
 
             # Check to see if it has not stopped waiting for start acceptance
             if self._autoware.motion_state != MotionState.STARTING:
-                self._accept_start_time = self._node.get_clock().now()
+                self.set_timeout("accept_start")
 
             # Send again when stopped in starting state for a certain period of time
-            if self._autoware.motion_state == MotionState.STARTING and self.check_timeout(
-                self._accept_start_time, self._parameter.accept_start
+            if self._autoware.motion_state == MotionState.STARTING and self.not_timeout(
+                "accept_start"
             ):
                 self._service_interface.accept_start()
 
@@ -211,14 +232,14 @@ class AnnounceControllerProperty:
         if in_emergency and not self._in_emergency_state:
             self.send_announce("emergency")
         elif in_emergency and self._in_emergency_state:
-            if self.check_timeout(self._emergency_trigger_time, self._mute_parameter.in_emergency):
+            if self.not_timeout("in_emergency"):
                 self.send_announce("in_emergency")
-                self._emergency_trigger_time = self._node.get_clock().now()
+                self.set_timeout("in_emergency")
 
         self._in_emergency_state = in_emergency
 
     def turn_signal_callback(self):
-        if not self.check_timeout(self._signal_announce_time, self._mute_parameter.turn_signal):
+        if self.not_timeout("turn_signal"):
             return
         elif self._in_emergency_state or self._in_stop_status:
             return
@@ -228,7 +249,7 @@ class AnnounceControllerProperty:
         if self._autoware.turn_signal == 2:
             self.send_announce("turning_right")
 
-        self._signal_announce_time = self._node.get_clock().now()
+        self.set_timeout("turn_signal")
 
     # 停止する予定を取得
     def stop_reason_checker_callback(self):
@@ -252,9 +273,7 @@ class AnnounceControllerProperty:
 
         # 音声の通知
         if shortest_stop_reason != "" and shortest_distance > -1 and shortest_distance < 2:
-            if not self.check_timeout(
-                self._stop_reason_announce_time, self._mute_parameter.stop_reason
-            ):
+            if self.not_timeout("stop_reason"):
                 return
 
             if (
@@ -288,4 +307,4 @@ class AnnounceControllerProperty:
     def announce_stop_reason(self, file):
         self._in_stop_status = True
         self.send_announce(file)
-        self._stop_reason_announce_time = self._node.get_clock().now()
+        self.set_timeout("stop_reason")
