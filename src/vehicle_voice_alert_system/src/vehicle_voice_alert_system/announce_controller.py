@@ -23,6 +23,7 @@ PRIORITY_DICT = {
     "departure": 4,
     "stop": 4,
     "restart_engage": 4,
+    "going_to_arrive": 4,
     "obstacle_stop": 3,
     "in_emergency": 3,
     "temporary_stop": 2,
@@ -69,6 +70,7 @@ class AnnounceControllerProperty:
         self._music_object = None
         self._in_stop_status = False
         self._in_driving_state = False
+        self._announce_arriving = False
 
         self._package_path = (
             get_package_share_directory("vehicle_voice_alert_system") + "/resource/sound"
@@ -130,6 +132,14 @@ class AnnounceControllerProperty:
                 if not self._music_object or not self._music_object.is_playing():
                     sound = WaveObject.from_wave_file(self._running_bgm_file)
                     self._music_object = sound.play()
+
+                if (
+                    self._autoware.goal_distance < self._parameter.announce_arriving_distance
+                    and not self._announce_arriving
+                ):
+                    # announce if the goal is with the distance
+                    self.send_announce("going_to_arrive")
+                    self._announce_arriving = True
             elif (
                 self._parameter.manual_driving_bgm
                 and not self._autoware.autoware_control
@@ -151,6 +161,7 @@ class AnnounceControllerProperty:
             ):
                 # Skip announce if is in manual driving
                 self.send_announce("stop")
+                self._announce_arriving = False
 
             self._in_driving_state = self.check_in_autonomous()
             self.set_timeout("driving_bgm")

@@ -11,6 +11,7 @@ from autoware_adapi_v1_msgs.msg import (
     LocalizationInitializationState,
 )
 from tier4_api_msgs.msg import AwapiAutowareStatus, AwapiVehicleStatus
+from tier4_debug_msgs.msg import Float64Stamped
 
 
 @dataclass
@@ -24,6 +25,7 @@ class AutowareInformation:
     velocity: float = 0.0
     motion_state: int = 0
     localization_init_state: int = 0
+    goal_distance: float = 1000.0
 
 
 class AutowareInterface:
@@ -83,6 +85,12 @@ class AutowareInterface:
             self.sub_localization_initialization_state_callback,
             api_qos,
         )
+        node.create_subscription(
+            Float64Stamped,
+            "/autoware_api/utils/path_distance_calculator/distance",
+            self.sub_path_distance_callback,
+            sub_qos,
+        )
 
     def sub_operation_mode_callback(self, msg):
         try:
@@ -129,3 +137,9 @@ class AutowareInterface:
             self._node.get_logger().error(
                 "Unable to get the localization init state, ERROR: " + str(e)
             )
+
+    def sub_path_distance_callback(self, msg):
+        try:
+            self.information.goal_distance = msg.data
+        except Exception as e:
+            self._node.get_logger().error("Unable to get the goal distance, ERROR: " + str(e))

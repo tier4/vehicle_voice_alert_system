@@ -2,6 +2,7 @@ vehicle_voice_alert_system:
   ros__parameters:
     manual_driving_bgm: false # param for enable bgm to play when manual driving
     driving_velocity_threshold: 0.2 # param for the threshold to play the running bgm
+    announce_arriving_distance: 100.0
     mute_timeout: # Param for to mute for a period after the announce
       stop_reason: 20.0
       turn_signal: 5.0
