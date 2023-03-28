@@ -144,9 +144,13 @@ class AnnounceControllerProperty:
                 if self._music_object and self._music_object.is_playing():
                     self._music_object.stop()
 
-                if self._autoware.autoware_control and self._in_driving_state:
-                    # Skip announce if is in manual driving
-                    self.send_announce("stop")
+            if (
+                self._autoware.route_state == RouteState.ARRIVED
+                and self._autoware.autoware_control
+                and self._in_driving_state
+            ):
+                # Skip announce if is in manual driving
+                self.send_announce("stop")
 
             self._in_driving_state = self.check_in_autonomous()
             self.set_timeout("driving_bgm")
