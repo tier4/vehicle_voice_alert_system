@@ -28,9 +28,7 @@ class RosServiceInterface:
         self._created_client_dict = {}
         self._lock = threading.RLock()
 
-        self._cli_accept_start= self.__create_client(
-            AcceptStart, "/api/motion/accept_start"
-        )
+        self._cli_accept_start = self.__create_client(AcceptStart, "/api/motion/accept_start")
 
     # service call function
     def accept_start(self):

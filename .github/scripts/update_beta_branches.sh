@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC1091
 
 git clone git@github.com:tier4/autoware-release-scripts.git
 
