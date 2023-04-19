@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import rclpy
+from rclpy.duration import Duration
 from dataclasses import dataclass
 from autoware_adapi_v1_msgs.msg import (
     RouteState,
