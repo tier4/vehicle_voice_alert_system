@@ -78,11 +78,11 @@ class AnnounceControllerProperty:
 
         self._running_bgm_file = self.get_filepath("running_music")
 
-        self._node.create_timer(0.5, self.check_playing_callback)
+        self._node.create_timer(1.0, self.check_playing_callback)
         self._node.create_timer(0.5, self.turn_signal_callback)
         self._node.create_timer(0.5, self.emergency_checker_callback)
         self._node.create_timer(0.5, self.stop_reason_checker_callback)
-        self._node.create_timer(0.2, self.announce_engage_when_starting)
+        self._node.create_timer(0.1, self.announce_engage_when_starting)
 
     def set_timeout(self, timeout_attr):
         setattr(self._timeout, timeout_attr, self._node.get_clock().now())
