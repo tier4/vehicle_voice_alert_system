@@ -96,8 +96,9 @@ class AutowareInterface:
         self._node.create_timer(0.2, self.reset_timer)
 
     def reset_timer(self):
-        if self._node.get_clock().now() - self._autoware_connection_time > Duration(seconds=2):
+        if self._node.get_clock().now() - self._autoware_connection_time > Duration(seconds=5):
             self.information = AutowareInformation([])
+            self._node.get_logger().error("Autoware disconnected", throttle_duration_sec=5)
 
     def sub_operation_mode_callback(self, msg):
         try:
