@@ -248,7 +248,10 @@ class AnnounceControllerProperty:
         self._current_announce = message
 
     def emergency_checker_callback(self):
-        in_emergency = self._autoware.information.mrm_behavior == MrmState.EMERGENCY_STOP
+        in_emergency = (
+            self._autoware.information.mrm_behavior == MrmState.EMERGENCY_STOP
+            or self._autoware.information.mrm_behavior == MrmState.COMFORTABLE_STOP
+        )
 
         if in_emergency and not self._in_emergency_state:
             self.send_announce("emergency")
@@ -278,6 +281,10 @@ class AnnounceControllerProperty:
             self._node.get_logger().warning(
                 "The vehicle is not in driving state, do not announce", throttle_duration_sec=10
             )
+            return
+
+        # skip when emergency stop
+        if self._in_emergency_state:
             return
 
         stop_reasons = self._autoware.information.stop_reasons
