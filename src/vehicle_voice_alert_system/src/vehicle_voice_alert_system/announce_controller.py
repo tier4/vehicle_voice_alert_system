@@ -71,6 +71,8 @@ class AnnounceControllerProperty:
         self._in_stop_status = False
         self._in_driving_state = False
         self._announce_arriving = False
+        self._skip_announce = False
+        self._announce_engage = False
 
         self._package_path = (
             get_package_share_directory("vehicle_voice_alert_system") + "/resource/sound"
@@ -129,6 +131,10 @@ class AnnounceControllerProperty:
                 return
 
             if self.check_in_autonomous() and not self._in_emergency_state:
+                if not self._announce_engage and self._parameter.signage_stand_alone:
+                    self.send_announce("departure")
+                    self._announce_engage = True
+
                 if not self._music_object or not self._music_object.is_playing():
                     sound = WaveObject.from_wave_file(self._running_bgm_file)
                     self._music_object = sound.play()
@@ -164,6 +170,10 @@ class AnnounceControllerProperty:
                 self.send_announce("stop")
                 self._announce_arriving = False
 
+            if self._autoware.information.route_state == RouteState.ARRIVED:
+                self._skip_announce = False
+                self._announce_engage = False
+
             self._in_driving_state = self.check_in_autonomous()
             self.set_timeout("driving_bgm")
         except Exception as e:
@@ -188,7 +198,10 @@ class AnnounceControllerProperty:
                 in [MotionState.STARTING, MotionState.MOVING]
                 and self._prev_motion_state == 1
             ):
-                self.send_announce("departure")
+                if self._announce_engage and not self._skip_announce:
+                    self._skip_announce = True
+                else:
+                    self.send_announce("departure")
                 self.reset_all_timeout()
                 if self._autoware.information.motion_state == MotionState.STARTING:
                     self._service_interface.accept_start()
