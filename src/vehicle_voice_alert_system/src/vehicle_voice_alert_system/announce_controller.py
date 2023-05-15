@@ -131,7 +131,7 @@ class AnnounceControllerProperty:
                 return
 
             if self.check_in_autonomous() and not self._in_emergency_state:
-                if not self._announce_engage and self._parameter.signage_stand_alone:
+                if not self._announce_engage:
                     self.send_announce("departure")
                     self._announce_engage = True
 
