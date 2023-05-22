@@ -198,7 +198,7 @@ class AnnounceControllerProperty:
                 in [MotionState.STARTING, MotionState.MOVING]
                 and self._prev_motion_state == 1
             ):
-                if self._announce_engage and not self._skip_announce:
+                if not self._skip_announce:
                     self._skip_announce = True
                 else:
                     self.send_announce("departure")
