@@ -130,7 +130,11 @@ class AnnounceControllerProperty:
                 self.set_timeout("driving_bgm")
                 return
 
-            if self.check_in_autonomous() and not self._in_emergency_state:
+            if (
+                self.check_in_autonomous()
+                and not self._in_emergency_state
+                and self._autoware.information.autoware_control
+            ):
                 if not self._announce_engage:
                     self.send_announce("departure")
                     self._announce_engage = True
