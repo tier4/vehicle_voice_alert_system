@@ -8,6 +8,7 @@ from simpleaudio import WaveObject
 from ament_index_python.packages import get_package_share_directory
 from rclpy.duration import Duration
 from rclpy.time import Time
+from pulsectl import Pulse
 
 from autoware_adapi_v1_msgs.msg import (
     RouteState,
@@ -16,6 +17,7 @@ from autoware_adapi_v1_msgs.msg import (
     MotionState,
     LocalizationInitializationState,
 )
+from vehicle_voice_alert_system_interfaces.srv import Volume
 
 # The higher the value, the higher the priority
 PRIORITY_DICT = {
@@ -84,6 +86,11 @@ class AnnounceControllerProperty:
         self._node.create_timer(0.5, self.emergency_checker_callback)
         self._node.create_timer(0.5, self.stop_reason_checker_callback)
         self._node.create_timer(0.1, self.announce_engage_when_starting)
+
+        self._pulse = Pulse()
+        # Get default sink at startup
+        self._sink = self._pulse.get_sink_by_name(self._pulse.server_info().default_sink_name)
+        self._node.create_service(Volume, "/volume", self.set_volume)
 
     def set_timeout(self, timeout_attr):
         setattr(self._timeout, timeout_attr, self._node.get_clock().now())
@@ -352,3 +359,7 @@ class AnnounceControllerProperty:
         self._in_stop_status = True
         self.send_announce(file)
         self.set_timeout("stop_reason")
+
+    def set_volume(self, request, response):
+        self._pulse.volume_set_all_chans(self._sink, request.volume)
+        return response
