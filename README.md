@@ -23,6 +23,12 @@ refer to here
 sudo pip3 install simpleaudio
 ```
 
+- pulsectl
+
+```bash
+sudo pip3 install pulsectl
+```
+
 ## build
 
 ```bash
