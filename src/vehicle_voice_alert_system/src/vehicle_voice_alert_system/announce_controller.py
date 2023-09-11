@@ -17,7 +17,8 @@ from autoware_adapi_v1_msgs.msg import (
     MotionState,
     LocalizationInitializationState,
 )
-from vehicle_voice_alert_system_interfaces.srv import Volume
+from tier4_hmi_msgs.srv import Volume
+from tier4_external_api_msgs.msg import ResponseStatus
 
 # The higher the value, the higher the priority
 PRIORITY_DICT = {
@@ -90,7 +91,7 @@ class AnnounceControllerProperty:
         self._pulse = Pulse()
         # Get default sink at startup
         self._sink = self._pulse.get_sink_by_name(self._pulse.server_info().default_sink_name)
-        self._node.create_service(Volume, "/volume", self.set_volume)
+        self._node.create_service(Volume, "~/volume", self.set_volume)
 
     def set_timeout(self, timeout_attr):
         setattr(self._timeout, timeout_attr, self._node.get_clock().now())
@@ -361,5 +362,9 @@ class AnnounceControllerProperty:
         self.set_timeout("stop_reason")
 
     def set_volume(self, request, response):
-        self._pulse.volume_set_all_chans(self._sink, request.volume)
+        try:
+            self._pulse.volume_set_all_chans(self._sink, request.volume)
+            response.status.code = ResponseStatus.SUCCESS
+        except Exception:
+            response.status.code = ResponseStatus.ERROR
         return response
