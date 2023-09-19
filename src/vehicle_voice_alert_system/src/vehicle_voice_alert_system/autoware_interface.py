@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import rclpy
+from rclpy.duration import Duration
 from dataclasses import dataclass
 from autoware_adapi_v1_msgs.msg import (
     RouteState,
@@ -91,6 +92,13 @@ class AutowareInterface:
             self.sub_path_distance_callback,
             sub_qos,
         )
+        self._autoware_connection_time = self._node.get_clock().now()
+        self._node.create_timer(2, self.reset_timer)
+
+    def reset_timer(self):
+        if self._node.get_clock().now() - self._autoware_connection_time > Duration(seconds=10):
+            self.information = AutowareInformation([])
+            self._node.get_logger().error("Autoware disconnected", throttle_duration_sec=10)
 
     def sub_operation_mode_callback(self, msg):
         try:
@@ -140,6 +148,7 @@ class AutowareInterface:
 
     def sub_path_distance_callback(self, msg):
         try:
+            self._autoware_connection_time = self._node.get_clock().now()
             self.information.goal_distance = msg.data
         except Exception as e:
             self._node.get_logger().error("Unable to get the goal distance, ERROR: " + str(e))
