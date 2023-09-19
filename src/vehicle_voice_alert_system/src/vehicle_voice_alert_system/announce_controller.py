@@ -73,6 +73,7 @@ class AnnounceControllerProperty:
         self._announce_arriving = False
         self._skip_announce = False
         self._announce_engage = False
+        self._in_slow_stop_state = False
 
         self._package_path = (
             get_package_share_directory("vehicle_voice_alert_system") + "/resource/sound"
@@ -264,9 +265,11 @@ class AnnounceControllerProperty:
         self._current_announce = message
 
     def emergency_checker_callback(self):
-        in_emergency = (
-            self._autoware.information.mrm_behavior == MrmState.EMERGENCY_STOP
-            or self._autoware.information.mrm_behavior == MrmState.COMFORTABLE_STOP
+        in_emergency = self._autoware.information.mrm_behavior == MrmState.EMERGENCY_STOP
+
+        in_slow_stop = (
+            self._autoware.information.mrm_behavior == MrmState.COMFORTABLE_STOP
+            and self._autoware.information.motion_state == MotionState.STOPPED
         )
 
         if in_emergency and not self._in_emergency_state:
@@ -275,8 +278,13 @@ class AnnounceControllerProperty:
             if not self.not_timeout("in_emergency"):
                 self.send_announce("in_emergency")
                 self.set_timeout("in_emergency")
+        elif in_slow_stop and self._in_slow_stop_state:
+            if not self.not_timeout("in_emergency"):
+                self.send_announce("in_emergency")
+                self.set_timeout("in_emergency")
 
         self._in_emergency_state = in_emergency
+        self._in_slow_stop_state = in_slow_stop
 
     def turn_signal_callback(self):
         if self.not_timeout("turn_signal"):
