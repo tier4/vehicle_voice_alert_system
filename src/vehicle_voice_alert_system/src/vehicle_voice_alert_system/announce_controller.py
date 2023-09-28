@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from simpleaudio import WaveObject
 from ament_index_python.packages import get_package_share_directory
 from rclpy.duration import Duration
+from rclpy.qos import QoSProfile, DurabilityPolicy
 from rclpy.time import Time
 from pulsectl import Pulse
 
@@ -17,7 +18,8 @@ from autoware_adapi_v1_msgs.msg import (
     MotionState,
     LocalizationInitializationState,
 )
-from tier4_hmi_msgs.srv import GetVolume, SetVolume
+from std_msgs.msg import Float32
+from tier4_hmi_msgs.srv import SetVolume
 from tier4_external_api_msgs.msg import ResponseStatus
 
 # The higher the value, the higher the priority
@@ -91,8 +93,14 @@ class AnnounceControllerProperty:
         self._pulse = Pulse()
         # Get default sink at startup
         self._sink = self._pulse.get_sink_by_name(self._pulse.server_info().default_sink_name)
-        self._node.create_service(GetVolume, "~/get/volume", self.get_volume)
+        self._get_volume_pub = self._node.create_publisher(
+            Float32,
+            "~/get/volume",
+            QoSProfile(depth=1, durability=DurabilityPolicy.TRANSIENT_LOCAL),
+        )
         self._node.create_service(SetVolume, "~/set/volume", self.set_volume)
+
+        self._get_volume_pub.publish(Float32(data=self._sink.volume.value_flat))
 
     def set_timeout(self, timeout_attr):
         setattr(self._timeout, timeout_attr, self._node.get_clock().now())
@@ -101,7 +109,11 @@ class AnnounceControllerProperty:
         for attr in self._timeout.__dict__.keys():
             trigger_time = getattr(self._timeout, attr)
             duration = getattr(self._mute_parameter, attr)
-            setattr(self._timeout, attr, self._node.get_clock().now() - Duration(seconds=duration))
+            setattr(
+                self._timeout,
+                attr,
+                self._node.get_clock().now() - Duration(seconds=duration),
+            )
 
     def not_timeout(self, timeout_attr):
         trigger_time = getattr(self._timeout, timeout_attr)
@@ -163,7 +175,8 @@ class AnnounceControllerProperty:
                 self._parameter.manual_driving_bgm
                 and not self._autoware.information.autoware_control
                 and not self.in_range(
-                    self._autoware.information.velocity, self._parameter.driving_velocity_threshold
+                    self._autoware.information.velocity,
+                    self._parameter.driving_velocity_threshold,
                 )
             ):
                 if not self._music_object or not self._music_object.is_playing():
@@ -190,7 +203,8 @@ class AnnounceControllerProperty:
             self.set_timeout("driving_bgm")
         except Exception as e:
             self._node.get_logger().error(
-                "not able to check the pending playing list: " + str(e), throttle_duration_sec=10
+                "not able to check the pending playing list: " + str(e),
+                throttle_duration_sec=10,
             )
 
     def in_range(self, input_value, range_value):
@@ -304,7 +318,8 @@ class AnnounceControllerProperty:
     def stop_reason_checker_callback(self):
         if not self.check_in_autonomous():
             self._node.get_logger().warning(
-                "The vehicle is not in driving state, do not announce", throttle_duration_sec=10
+                "The vehicle is not in driving state, do not announce",
+                throttle_duration_sec=10,
             )
             return
 
@@ -362,18 +377,10 @@ class AnnounceControllerProperty:
         self.send_announce(file)
         self.set_timeout("stop_reason")
 
-    def get_volume(self, _, response):
-        try:
-            volume = self._sink.volume.value_flat
-            response.status.code = ResponseStatus.SUCCESS
-            response.volume = volume
-        except Exception:
-            response.status.code = ResponseStatus.ERROR
-        return response
-
     def set_volume(self, request, response):
         try:
             self._pulse.volume_set_all_chans(self._sink, request.volume)
+            self._get_volume_pub.publish(Float32(data=self._sink.volume.value_flat))
             response.status.code = ResponseStatus.SUCCESS
         except Exception:
             response.status.code = ResponseStatus.ERROR
