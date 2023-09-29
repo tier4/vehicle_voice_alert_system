@@ -8,7 +8,7 @@ from simpleaudio import WaveObject
 from ament_index_python.packages import get_package_share_directory
 from rclpy.duration import Duration
 from rclpy.time import Time
-from pulsectl import Pulse, PulseSinkInfo
+from pulsectl import Pulse
 
 from autoware_adapi_v1_msgs.msg import (
     RouteState,
