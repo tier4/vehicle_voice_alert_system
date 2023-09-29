@@ -8,7 +8,7 @@ from simpleaudio import WaveObject
 from ament_index_python.packages import get_package_share_directory
 from rclpy.duration import Duration
 from rclpy.time import Time
-from pulsectl import Pulse
+from pulsectl import Pulse, PulseSinkInfo
 
 from autoware_adapi_v1_msgs.msg import (
     RouteState,
@@ -90,8 +90,6 @@ class AnnounceControllerProperty:
         self._node.create_timer(0.1, self.announce_engage_when_starting)
 
         self._pulse = Pulse()
-        # Get default sink at startup
-        self._sink = self._pulse.get_sink_by_name(self._pulse.server_info().default_sink_name)
         self._get_volume_pub = self._node.create_publisher(Float32, "~/get/volume", 1)
         self._node.create_timer(1.0, self.publish_volume_callback)
         self._node.create_service(SetVolume, "~/set/volume", self.set_volume)
@@ -372,10 +370,12 @@ class AnnounceControllerProperty:
         self.set_timeout("stop_reason")
 
     def publish_volume_callback(self):
+        self._sink = self._pulse.get_sink_by_name(self._pulse.server_info().default_sink_name)
         self._get_volume_pub.publish(Float32(data=self._sink.volume.value_flat))
 
     def set_volume(self, request, response):
         try:
+            self._sink = self._pulse.get_sink_by_name(self._pulse.server_info().default_sink_name)
             self._pulse.volume_set_all_chans(self._sink, request.volume)
             response.status.code = ResponseStatus.SUCCESS
         except Exception:
