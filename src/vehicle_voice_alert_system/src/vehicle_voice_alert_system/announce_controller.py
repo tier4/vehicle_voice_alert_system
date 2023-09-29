@@ -7,7 +7,6 @@ from dataclasses import dataclass
 from simpleaudio import WaveObject
 from ament_index_python.packages import get_package_share_directory
 from rclpy.duration import Duration
-from rclpy.qos import QoSProfile, DurabilityPolicy
 from rclpy.time import Time
 from pulsectl import Pulse
 
@@ -93,14 +92,9 @@ class AnnounceControllerProperty:
         self._pulse = Pulse()
         # Get default sink at startup
         self._sink = self._pulse.get_sink_by_name(self._pulse.server_info().default_sink_name)
-        self._get_volume_pub = self._node.create_publisher(
-            Float32,
-            "~/get/volume",
-            QoSProfile(depth=1, durability=DurabilityPolicy.TRANSIENT_LOCAL),
-        )
+        self._get_volume_pub = self._node.create_publisher(Float32, "~/get/volume", 1)
+        self._node.create_timer(1.0, self.publish_volume_callback)
         self._node.create_service(SetVolume, "~/set/volume", self.set_volume)
-
-        self._get_volume_pub.publish(Float32(data=self._sink.volume.value_flat))
 
     def set_timeout(self, timeout_attr):
         setattr(self._timeout, timeout_attr, self._node.get_clock().now())
@@ -377,10 +371,12 @@ class AnnounceControllerProperty:
         self.send_announce(file)
         self.set_timeout("stop_reason")
 
+    def publish_volume_callback(self):
+        self._get_volume_pub.publish(Float32(data=self._sink.volume.value_flat))
+
     def set_volume(self, request, response):
         try:
             self._pulse.volume_set_all_chans(self._sink, request.volume)
-            self._get_volume_pub.publish(Float32(data=self._sink.volume.value_flat))
             response.status.code = ResponseStatus.SUCCESS
         except Exception:
             response.status.code = ResponseStatus.ERROR
