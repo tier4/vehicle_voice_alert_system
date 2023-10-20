@@ -255,6 +255,10 @@ class AnnounceControllerProperty:
             )
 
     def send_announce(self, message):
+        if not self._autoware.information.autoware_control:
+            self._node.get_logger().info("The vehicle is not control by autoware, skip announce")
+            return
+
         priority = PRIORITY_DICT.get(message, 0)
         previous_priority = PRIORITY_DICT.get(self._current_announce, 0)
 
