@@ -269,7 +269,8 @@ class AnnounceControllerProperty:
         self._current_announce = message
 
     def emergency_checker_callback(self):
-        in_emergency = self._autoware.information.mrm_behavior == MrmState.EMERGENCY_STOP
+        if self._autoware.information.operation_mode != OperationModeState.STOP:
+            in_emergency = self._autoware.information.mrm_behavior == MrmState.EMERGENCY_STOP
 
         in_slow_stop = (
             self._autoware.information.mrm_behavior == MrmState.COMFORTABLE_STOP
