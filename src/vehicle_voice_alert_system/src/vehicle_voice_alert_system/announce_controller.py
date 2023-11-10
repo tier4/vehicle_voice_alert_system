@@ -62,6 +62,7 @@ class AnnounceControllerProperty:
             node.get_clock().now(),
             node.get_clock().now(),
         )
+        self._engage_trigger_time = self._node.get_clock().now()
         self._in_emergency_state = False
         self._prev_motion_state = 0
         self._current_announce = ""
@@ -204,8 +205,12 @@ class AnnounceControllerProperty:
             ):
                 if not self._skip_announce:
                     self._skip_announce = True
-                else:
+                elif self._node.get_clock().now() - self._engage_trigger_time > Duration(
+                    seconds=self._mute_parameter.accept_start
+                ):
                     self.send_announce("departure")
+                    self._engage_trigger_time = self._node.get_clock().now()
+
                 self.reset_all_timeout()
                 if self._autoware.information.motion_state == MotionState.STARTING:
                     self._service_interface.accept_start()
@@ -255,6 +260,10 @@ class AnnounceControllerProperty:
             )
 
     def send_announce(self, message):
+        if not self._autoware.information.autoware_control:
+            self._node.get_logger().info("The vehicle is not control by autoware, skip announce")
+            return
+
         priority = PRIORITY_DICT.get(message, 0)
         previous_priority = PRIORITY_DICT.get(self._current_announce, 0)
 
@@ -265,7 +274,10 @@ class AnnounceControllerProperty:
         self._current_announce = message
 
     def emergency_checker_callback(self):
-        in_emergency = self._autoware.information.mrm_behavior == MrmState.EMERGENCY_STOP
+        if self._autoware.information.operation_mode == OperationModeState.STOP:
+            in_emergency = False
+        else:
+            in_emergency = self._autoware.information.mrm_behavior == MrmState.EMERGENCY_STOP
 
         in_slow_stop = (
             self._autoware.information.mrm_behavior == MrmState.COMFORTABLE_STOP
