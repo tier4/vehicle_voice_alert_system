@@ -326,7 +326,7 @@ class AnnounceControllerProperty:
                 shortest_stop_reason = stop_reason.reason
 
         # 音声の通知
-        if  shortest_stop_reason != "" and shortest_distance > -1 and shortest_distance < 2:
+        if shortest_stop_reason != "" and shortest_distance > -1 and shortest_distance < 2:
             if self.in_interval("stop_reason"):
                 return
 
