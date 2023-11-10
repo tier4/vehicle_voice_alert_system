@@ -347,7 +347,7 @@ class AnnounceControllerProperty:
                     "TrafficLight",
                     "BlindSpot",
                 ]
-                and self._autoware.information.velocity == 0
+                and self._autoware.information.motion_state == MotionState.STOPPED
                 and self._stop_announce_executed == False
             ):
                 self.announce_stop_reason("temporary_stop")
