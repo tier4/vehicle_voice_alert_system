@@ -64,7 +64,7 @@ class AnnounceControllerProperty:
         )
         self._engage_trigger_time = self._node.get_clock().now()
         self._in_emergency_state = False
-        self._prev_motion_state = 0
+        self._prev_motion_state = MotionState.UNKNOWN
         self._current_announce = ""
         self._pending_announce_list = []
         self._wav_object = None
@@ -73,6 +73,7 @@ class AnnounceControllerProperty:
         self._in_driving_state = False
         self._announce_arriving = False
         self._skip_announce = False
+        self._stop_announce_executed = False
         self._announce_engage = False
         self._in_slow_stop_state = False
 
@@ -96,7 +97,7 @@ class AnnounceControllerProperty:
             duration = getattr(self._mute_parameter, attr)
             setattr(self._timeout, attr, self._node.get_clock().now() - Duration(seconds=duration))
 
-    def not_timeout(self, timeout_attr):
+    def in_interval(self, timeout_attr):
         trigger_time = getattr(self._timeout, timeout_attr)
         duration = getattr(self._mute_parameter, timeout_attr)
         return self._node.get_clock().now() - trigger_time < Duration(seconds=duration)
@@ -120,7 +121,7 @@ class AnnounceControllerProperty:
             if not self._running_bgm_file:
                 return
 
-            if self.not_timeout("driving_bgm"):
+            if self.in_interval("driving_bgm"):
                 return
 
             if (
@@ -195,14 +196,15 @@ class AnnounceControllerProperty:
                 self._autoware.information.localization_init_state
                 == LocalizationInitializationState.UNINITIALIZED
             ):
-                self._prev_motion_state = 0
+                self._prev_motion_state = MotionState.UNKNOWN
                 return
 
             if (
                 self._autoware.information.motion_state
                 in [MotionState.STARTING, MotionState.MOVING]
-                and self._prev_motion_state == 1
+                and self._prev_motion_state == MotionState.STOPPED
             ):
+                self._stop_announce_executed = False
                 if not self._skip_announce:
                     self._skip_announce = True
                 elif self._node.get_clock().now() - self._engage_trigger_time > Duration(
@@ -222,7 +224,7 @@ class AnnounceControllerProperty:
             # Send again when stopped in starting state for a certain period of time
             if (
                 self._autoware.information.motion_state == MotionState.STARTING
-                and self.not_timeout("accept_start")
+                and self.in_interval("accept_start")
             ):
                 self._service_interface.accept_start()
 
@@ -287,11 +289,11 @@ class AnnounceControllerProperty:
         if in_emergency and not self._in_emergency_state:
             self.send_announce("emergency")
         elif in_emergency and self._in_emergency_state:
-            if not self.not_timeout("in_emergency"):
+            if not self.in_interval("in_emergency"):
                 self.send_announce("in_emergency")
                 self.set_timeout("in_emergency")
         elif in_slow_stop and self._in_slow_stop_state:
-            if not self.not_timeout("in_emergency"):
+            if not self.in_interval("in_emergency"):
                 self.send_announce("in_emergency")
                 self.set_timeout("in_emergency")
 
@@ -299,7 +301,7 @@ class AnnounceControllerProperty:
         self._in_slow_stop_state = in_slow_stop
 
     def turn_signal_callback(self):
-        if self.not_timeout("turn_signal"):
+        if self.in_interval("turn_signal"):
             return
         elif self._in_emergency_state or self._in_stop_status:
             return
@@ -337,7 +339,7 @@ class AnnounceControllerProperty:
 
         # 音声の通知
         if shortest_stop_reason != "" and shortest_distance > -1 and shortest_distance < 2:
-            if self.not_timeout("stop_reason"):
+            if self.in_interval("stop_reason"):
                 return
 
             if (
@@ -348,21 +350,20 @@ class AnnounceControllerProperty:
                     "SurroundObstacleCheck",
                     "BlindSpot",
                     "BlockedByObstacles",
+                    "Intersection",
+                    "MergeFromPrivateRoad",
+                    "Crosswalk",
+                    "Walkway",
+                    "StopLine",
+                    "NoStoppingArea",
+                    "TrafficLight",
+                    "BlindSpot",
                 ]
-                and self._autoware.information.velocity == 0
+                and self._autoware.information.motion_state == MotionState.STOPPED
+                and self._stop_announce_executed == False
             ):
-                self.announce_stop_reason("obstacle_stop")
-            elif shortest_stop_reason in [
-                "Intersection",
-                "MergeFromPrivateRoad",
-                "Crosswalk",
-                "Walkway",
-                "StopLine",
-                "NoStoppingArea",
-                "TrafficLight",
-                "BlindSpot",
-            ]:
                 self.announce_stop_reason("temporary_stop")
+                self._stop_announce_executed = True
             else:
                 self._in_stop_status = False
         else:
