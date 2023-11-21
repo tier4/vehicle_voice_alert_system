@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 # This Python file uses the following encoding: utf-8
 
+import os
 from os import path
 from dataclasses import dataclass
 from simpleaudio import WaveObject
@@ -21,6 +22,7 @@ from std_msgs.msg import Float32
 from tier4_hmi_msgs.srv import SetVolume
 from tier4_external_api_msgs.msg import ResponseStatus
 
+
 # The higher the value, the higher the priority
 PRIORITY_DICT = {
     "emergency": 4,
@@ -34,6 +36,8 @@ PRIORITY_DICT = {
     "turning_left": 1,
     "turning_right": 1,
 }
+
+CURRENT_VOLUME_PATH = "/opt/autoware/volume.txt"
 
 
 @dataclass
@@ -90,6 +94,13 @@ class AnnounceControllerProperty:
         self._node.create_timer(0.1, self.announce_engage_when_starting)
 
         self._pulse = Pulse()
+        if os.path.isfile(CURRENT_VOLUME_PATH):
+            with open(CURRENT_VOLUME_PATH, "r") as f:
+                self._sink = self._pulse.get_sink_by_name(
+                    self._pulse.server_info().default_sink_name
+                )
+                self._pulse.volume_set_all_chans(self._sink, float(f.readline()))
+
         self._get_volume_pub = self._node.create_publisher(Float32, "~/get/volume", 1)
         self._node.create_timer(1.0, self.publish_volume_callback)
         self._node.create_service(SetVolume, "~/set/volume", self.set_volume)
@@ -377,6 +388,8 @@ class AnnounceControllerProperty:
         try:
             self._sink = self._pulse.get_sink_by_name(self._pulse.server_info().default_sink_name)
             self._pulse.volume_set_all_chans(self._sink, request.volume)
+            with open(CURRENT_VOLUME_PATH, "w") as f:
+                f.write(f"{self._sink.volume.value_flat}\n")
             response.status.code = ResponseStatus.SUCCESS
         except Exception:
             response.status.code = ResponseStatus.ERROR
