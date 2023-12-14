@@ -31,6 +31,43 @@ PRIORITY_DICT = {
     "turning_right": 1,
 }
 
+# stop_reasonsではなく velocity_factorを参照するように変更した際に不要になったはず
+OLD_STOP_REASONS = [
+    "ObstacleStop",
+    "DetectionArea",
+    "SurroundObstacleCheck",
+    "BlindSpot",
+    "BlockedByObstacles",
+    "Intersection",
+    "MergeFromPrivateRoad",
+    "Crosswalk",
+    "Walkway",
+    "StopLine",
+    "NoStoppingArea",
+    "TrafficLight",
+    "BlindSpot",
+]
+
+# 参照元: https://github.com/autowarefoundation/autoware_adapi_msgs/blob/main/autoware_adapi_v1_msgs/planning/msg/PlanningBehavior.msg
+STOP_ANNOUNCE_BEHAVIORS = [
+    "avoidance",
+    "crosswalk",
+    "goal-planner",
+    "intersection",
+    # "lane-change",
+    # "merge",
+    "no-drivable-lane",
+    "no-stopping-area",
+    "rear-check",
+    "route-obstacle",
+    "sidewalk",
+    "start-planner",
+    "stop-sign",
+    "surrounding-obstacle",
+    "traffic-signal",
+    "user-defined-attention-area",
+    "virtual-traffic-light",
+]
 
 @dataclass
 class TimeoutClass:
@@ -313,47 +350,28 @@ class AnnounceControllerProperty:
         if self._in_emergency_state:
             return
 
-        stop_reasons = self._autoware.information.stop_reasons
-        shortest_stop_reason = ""
-        shortest_distance = -1
-        for stop_reason in stop_reasons:
-            dist_to_stop_pose = -1
-            for stop_factor in stop_reason.stop_factors:
-                if dist_to_stop_pose > stop_factor.dist_to_stop_pose or dist_to_stop_pose == -1:
-                    dist_to_stop_pose = stop_factor.dist_to_stop_pose
-            if shortest_distance == -1 or shortest_distance > dist_to_stop_pose:
-                shortest_distance = dist_to_stop_pose
-                shortest_stop_reason = stop_reason.reason
+        if self._stop_announce_executed == True:
+            return
+
+        execute_stop_announce = False
+        for velocity_factor in self._autoware.information.velocity_factors:
+            self._node.get_logger().warning(
+                "behavior below", throttle_duration_sec=1
+            )
+            self._node.get_logger().warning(
+                velocity_factor.behavior, throttle_duration_sec=1
+            )
+            if velocity_factor.behavior in STOP_ANNOUNCE_BEHAVIORS:
+                execute_stop_announce = True
+                break
 
         # 音声の通知
-        if shortest_stop_reason != "" and shortest_distance > -1 and shortest_distance < 2:
+        if execute_stop_announce == True and self._autoware.information.motion_state == MotionState.STOPPED:
             if self.in_interval("stop_reason"):
                 return
 
-            if (
-                shortest_stop_reason
-                in [
-                    "ObstacleStop",
-                    "DetectionArea",
-                    "SurroundObstacleCheck",
-                    "BlindSpot",
-                    "BlockedByObstacles",
-                    "Intersection",
-                    "MergeFromPrivateRoad",
-                    "Crosswalk",
-                    "Walkway",
-                    "StopLine",
-                    "NoStoppingArea",
-                    "TrafficLight",
-                    "BlindSpot",
-                ]
-                and self._autoware.information.motion_state == MotionState.STOPPED
-                and self._stop_announce_executed == False
-            ):
-                self.announce_stop_reason("temporary_stop")
-                self._stop_announce_executed = True
-            else:
-                self._in_stop_status = False
+            self.announce_stop_reason("temporary_stop")
+            self._stop_announce_executed = True
         else:
             self._in_stop_status = False
 

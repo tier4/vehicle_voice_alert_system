@@ -10,6 +10,7 @@ from autoware_adapi_v1_msgs.msg import (
     OperationModeState,
     MotionState,
     LocalizationInitializationState,
+    VelocityFactorArray,
 )
 from tier4_api_msgs.msg import AwapiAutowareStatus, AwapiVehicleStatus
 from tier4_debug_msgs.msg import Float64Stamped
@@ -18,6 +19,7 @@ from tier4_debug_msgs.msg import Float64Stamped
 @dataclass
 class AutowareInformation:
     stop_reasons: list
+    velocity_factors: list
     autoware_control: bool = False
     operation_mode: int = 0
     mrm_behavior: int = 0
@@ -32,7 +34,7 @@ class AutowareInformation:
 class AutowareInterface:
     def __init__(self, node):
         self._node = node
-        self.information = AutowareInformation([])
+        self.information = AutowareInformation([], [])
 
         sub_qos = rclpy.qos.QoSProfile(
             history=rclpy.qos.QoSHistoryPolicy.KEEP_LAST,
@@ -78,6 +80,12 @@ class AutowareInterface:
             sub_qos,
         )
         node.create_subscription(
+            VelocityFactorArray,
+            "/api/planning/velocity_factors",
+            self.sub_velocity_factor_callback,
+            sub_qos,
+        )
+        node.create_subscription(
             MotionState, "/api/motion/state", self.sub_motion_state_callback, api_qos
         )
         node.create_subscription(
@@ -97,7 +105,7 @@ class AutowareInterface:
 
     def reset_timer(self):
         if self._node.get_clock().now() - self._autoware_connection_time > Duration(seconds=10):
-            self.information = AutowareInformation([])
+            self.information = AutowareInformation([], [])
             self._node.get_logger().error("Autoware disconnected", throttle_duration_sec=10)
 
     def sub_operation_mode_callback(self, msg):
@@ -129,6 +137,12 @@ class AutowareInterface:
     def sub_autoware_state_callback(self, msg):
         try:
             self.information.stop_reasons = msg.stop_reason.stop_reasons
+        except Exception as e:
+            self._node.get_logger().error("Unable to get the vehicle state, ERROR: " + str(e))
+
+    def sub_velocity_factor_callback(self, msg):
+        try:
+            self.information.velocity_factors = msg.factors
         except Exception as e:
             self._node.get_logger().error("Unable to get the vehicle state, ERROR: " + str(e))
 
