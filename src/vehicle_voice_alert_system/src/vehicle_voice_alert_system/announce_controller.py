@@ -31,31 +31,14 @@ PRIORITY_DICT = {
     "turning_right": 1,
 }
 
-# stop_reasonsではなく velocity_factorを参照するように変更した際に不要になったはず
-OLD_STOP_REASONS = [
-    "ObstacleStop",
-    "DetectionArea",
-    "SurroundObstacleCheck",
-    "BlindSpot",
-    "BlockedByObstacles",
-    "Intersection",
-    "MergeFromPrivateRoad",
-    "Crosswalk",
-    "Walkway",
-    "StopLine",
-    "NoStoppingArea",
-    "TrafficLight",
-    "BlindSpot",
-]
-
 # 参照元: https://github.com/autowarefoundation/autoware_adapi_msgs/blob/main/autoware_adapi_v1_msgs/planning/msg/PlanningBehavior.msg
 STOP_ANNOUNCE_BEHAVIORS = [
     "avoidance",
     "crosswalk",
     "goal-planner",
     "intersection",
-    # "lane-change",
-    # "merge",
+    "lane-change",
+    "merge",
     "no-drivable-lane",
     "no-stopping-area",
     "rear-check",
