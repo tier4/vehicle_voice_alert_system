@@ -338,12 +338,6 @@ class AnnounceControllerProperty:
 
         execute_stop_announce = False
         for velocity_factor in self._autoware.information.velocity_factors:
-            self._node.get_logger().warning(
-                "behavior below", throttle_duration_sec=1
-            )
-            self._node.get_logger().warning(
-                velocity_factor.behavior, throttle_duration_sec=1
-            )
             if velocity_factor.behavior in STOP_ANNOUNCE_BEHAVIORS:
                 execute_stop_announce = True
                 break
