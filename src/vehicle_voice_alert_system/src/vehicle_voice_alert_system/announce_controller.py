@@ -53,7 +53,8 @@ class AnnounceControllerProperty:
         self._node = node
         self._ros_service_interface = ros_service_interface
         self._parameter = parameter_interface.parameter
-        self._mute_parameter = parameter_interface.mute_parameter
+        self._announce_interval_parameter = parameter_interface.announce_interval_parameter
+        self._announce_settings = parameter_interface.announce_settings
         self._autoware = autoware_interface
         self._timeout = TimeoutClass(
             node.get_clock().now(),
@@ -93,12 +94,12 @@ class AnnounceControllerProperty:
     def reset_all_timeout(self):
         for attr in self._timeout.__dict__.keys():
             trigger_time = getattr(self._timeout, attr)
-            duration = getattr(self._mute_parameter, attr)
+            duration = getattr(self._announce_interval_parameter, attr)
             setattr(self._timeout, attr, self._node.get_clock().now() - Duration(seconds=duration))
 
     def not_timeout(self, timeout_attr):
         trigger_time = getattr(self._timeout, timeout_attr)
-        duration = getattr(self._mute_parameter, timeout_attr)
+        duration = getattr(self._announce_interval_parameter, timeout_attr)
         return self._node.get_clock().now() - trigger_time < Duration(seconds=duration)
 
     def check_in_autonomous(self):
@@ -141,8 +142,9 @@ class AnnounceControllerProperty:
                     self._announce_engage = True
 
                 if not self._music_object or not self._music_object.is_playing():
-                    sound = WaveObject.from_wave_file(self._running_bgm_file)
-                    self._music_object = sound.play()
+                    if getattr(self._announce_settings, "bgm"):
+                        sound = WaveObject.from_wave_file(self._running_bgm_file)
+                        self._music_object = sound.play()
 
                 if (
                     self._autoware.information.goal_distance
@@ -160,8 +162,9 @@ class AnnounceControllerProperty:
                 )
             ):
                 if not self._music_object or not self._music_object.is_playing():
-                    sound = WaveObject.from_wave_file(self._running_bgm_file)
-                    self._music_object = sound.play()
+                    if getattr(self._announce_settings, "bgm"):
+                        sound = WaveObject.from_wave_file(self._running_bgm_file)
+                        self._music_object = sound.play()
             else:
                 if self._music_object and self._music_object.is_playing():
                     self._music_object.stop()
@@ -206,7 +209,7 @@ class AnnounceControllerProperty:
                 if not self._skip_announce:
                     self._skip_announce = True
                 elif self._node.get_clock().now() - self._engage_trigger_time > Duration(
-                    seconds=self._mute_parameter.accept_start
+                    seconds=self._announce_interval_parameter.accept_start
                 ):
                     self.send_announce("departure")
                     self._engage_trigger_time = self._node.get_clock().now()
@@ -242,6 +245,14 @@ class AnnounceControllerProperty:
         except Exception as e:
             self._node.get_logger().error("not able to check the current playing: " + str(e))
 
+    # skip announce by setting
+    def check_announce_or_not(self, message):
+        try:
+            return getattr(self._announce_settings, message)
+        except Exception as e:
+            self._node.get_logger().error("check announce or not: " + str(e))
+            return False
+
     def play_sound(self, message):
         if (
             self._parameter.mute_overlap_bgm
@@ -262,6 +273,9 @@ class AnnounceControllerProperty:
     def send_announce(self, message):
         if not self._autoware.information.autoware_control:
             self._node.get_logger().info("The vehicle is not control by autoware, skip announce")
+            return
+
+        if not self.check_announce_or_not(message):
             return
 
         priority = PRIORITY_DICT.get(message, 0)

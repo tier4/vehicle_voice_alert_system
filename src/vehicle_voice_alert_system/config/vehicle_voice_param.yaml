@@ -3,11 +3,23 @@ vehicle_voice_alert_system:
     manual_driving_bgm: false # param for enable bgm to play when manual driving
     driving_velocity_threshold: 0.2 # param for the threshold to play the running bgm
     announce_arriving_distance: 10.0
-    mute_timeout: # Param for to mute for a period after the announce
+    announce_interval: # Param for to mute for a period after the announce
       stop_reason: 20.0
       turn_signal: 5.0
       in_emergency: 30.0
       driving_bgm: 0.0
       accept_start: 5.0 # param to recall the accept start service
     skip_default_voice: false # Param for skip playing default voice, if the voice is not found in the primary_voice_folder_path
-    mute_overlap_bgm: false # Param for muting bgm when the announce is play
+    mute_overlap_bgm: false # Param for muting bgm when the other announce is play
+    announce: # Announce or mute
+      emergency: true
+      departure: true
+      stop: true
+      restart_engage: true
+      going_to_arrive: true
+      obstacle_stop: true
+      in_emergency: true
+      temporary_stop: true
+      turning_left: true
+      turning_right: true
+      bgm: true
