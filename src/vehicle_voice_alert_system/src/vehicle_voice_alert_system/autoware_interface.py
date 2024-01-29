@@ -63,7 +63,7 @@ class AutowareInterface:
         )
         node.create_subscription(
             MrmState,
-            "/supervisor/fail_safe/overall/mrm_state",
+            "/api/fail_safe/mrm_state",
             self.sub_mrm_callback,
             sub_qos,
         )
