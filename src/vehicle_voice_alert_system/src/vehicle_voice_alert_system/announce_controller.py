@@ -2,12 +2,14 @@
 # -*- coding: utf-8 -*-
 # This Python file uses the following encoding: utf-8
 
+import os
 from os import path
 from dataclasses import dataclass
 from simpleaudio import WaveObject
 from ament_index_python.packages import get_package_share_directory
 from rclpy.duration import Duration
 from rclpy.time import Time
+from pulsectl import Pulse
 
 from autoware_adapi_v1_msgs.msg import (
     RouteState,
@@ -16,6 +18,10 @@ from autoware_adapi_v1_msgs.msg import (
     MotionState,
     LocalizationInitializationState,
 )
+from std_msgs.msg import Float32
+from tier4_hmi_msgs.srv import SetVolume
+from tier4_external_api_msgs.msg import ResponseStatus
+
 
 # The higher the value, the higher the priority
 PRIORITY_DICT = {
@@ -31,6 +37,28 @@ PRIORITY_DICT = {
     "turning_right": 1,
 }
 
+# 参照元: https://github.com/autowarefoundation/autoware_adapi_msgs/blob/main/autoware_adapi_v1_msgs/planning/msg/PlanningBehavior.msg
+STOP_ANNOUNCE_BEHAVIORS = [
+    "avoidance",
+    "crosswalk",
+    "goal-planner",
+    "intersection",
+    "lane-change",
+    "merge",
+    "no-drivable-lane",
+    "no-stopping-area",
+    "rear-check",
+    "route-obstacle",
+    "sidewalk",
+    "start-planner",
+    "stop-sign",
+    "surrounding-obstacle",
+    "traffic-signal",
+    "user-defined-attention-area",
+    "virtual-traffic-light",
+]
+
+CURRENT_VOLUME_PATH = "/opt/autoware/volume.txt"
 
 @dataclass
 class TimeoutClass:
@@ -53,7 +81,8 @@ class AnnounceControllerProperty:
         self._node = node
         self._ros_service_interface = ros_service_interface
         self._parameter = parameter_interface.parameter
-        self._mute_parameter = parameter_interface.mute_parameter
+        self._announce_interval_parameter = parameter_interface.announce_interval_parameter
+        self._announce_settings = parameter_interface.announce_settings
         self._autoware = autoware_interface
         self._timeout = TimeoutClass(
             node.get_clock().now(),
@@ -62,8 +91,9 @@ class AnnounceControllerProperty:
             node.get_clock().now(),
             node.get_clock().now(),
         )
+        self._engage_trigger_time = self._node.get_clock().now()
         self._in_emergency_state = False
-        self._prev_motion_state = 0
+        self._prev_motion_state = MotionState.UNKNOWN
         self._current_announce = ""
         self._pending_announce_list = []
         self._wav_object = None
@@ -72,6 +102,7 @@ class AnnounceControllerProperty:
         self._in_driving_state = False
         self._announce_arriving = False
         self._skip_announce = False
+        self._stop_announce_executed = False
         self._announce_engage = False
         self._in_slow_stop_state = False
 
@@ -86,18 +117,31 @@ class AnnounceControllerProperty:
         self._node.create_timer(0.5, self.stop_reason_checker_callback)
         self._node.create_timer(0.1, self.announce_engage_when_starting)
 
+        self._pulse = Pulse()
+        if os.path.isfile(CURRENT_VOLUME_PATH):
+            with open(CURRENT_VOLUME_PATH, "r") as f:
+                self._sink = self._pulse.get_sink_by_name(
+                    self._pulse.server_info().default_sink_name
+                )
+                self._pulse.volume_set_all_chans(self._sink, float(f.readline()))
+
+        self._get_volume_pub = self._node.create_publisher(Float32, "~/get/volume", 1)
+        self._node.create_timer(1.0, self.publish_volume_callback)
+        self._node.create_service(SetVolume, "~/set/volume", self.set_volume)
+
     def set_timeout(self, timeout_attr):
         setattr(self._timeout, timeout_attr, self._node.get_clock().now())
 
     def reset_all_timeout(self):
         for attr in self._timeout.__dict__.keys():
             trigger_time = getattr(self._timeout, attr)
-            duration = getattr(self._mute_parameter, attr)
+            duration = getattr(self._announce_interval_parameter, attr)
             setattr(self._timeout, attr, self._node.get_clock().now() - Duration(seconds=duration))
 
-    def not_timeout(self, timeout_attr):
+
+    def in_interval(self, timeout_attr):
         trigger_time = getattr(self._timeout, timeout_attr)
-        duration = getattr(self._mute_parameter, timeout_attr)
+        duration = getattr(self._announce_interval_parameter, timeout_attr)
         return self._node.get_clock().now() - trigger_time < Duration(seconds=duration)
 
     def check_in_autonomous(self):
@@ -119,7 +163,7 @@ class AnnounceControllerProperty:
             if not self._running_bgm_file:
                 return
 
-            if self.not_timeout("driving_bgm"):
+            if self.in_interval("driving_bgm"):
                 return
 
             if (
@@ -140,8 +184,9 @@ class AnnounceControllerProperty:
                     self._announce_engage = True
 
                 if not self._music_object or not self._music_object.is_playing():
-                    sound = WaveObject.from_wave_file(self._running_bgm_file)
-                    self._music_object = sound.play()
+                    if getattr(self._announce_settings, "bgm"):
+                        sound = WaveObject.from_wave_file(self._running_bgm_file)
+                        self._music_object = sound.play()
 
                 if (
                     self._autoware.information.goal_distance
@@ -155,12 +200,14 @@ class AnnounceControllerProperty:
                 self._parameter.manual_driving_bgm
                 and not self._autoware.information.autoware_control
                 and not self.in_range(
-                    self._autoware.information.velocity, self._parameter.driving_velocity_threshold
+                    self._autoware.information.velocity,
+                    self._parameter.driving_velocity_threshold,
                 )
             ):
                 if not self._music_object or not self._music_object.is_playing():
-                    sound = WaveObject.from_wave_file(self._running_bgm_file)
-                    self._music_object = sound.play()
+                    if getattr(self._announce_settings, "bgm"):
+                        sound = WaveObject.from_wave_file(self._running_bgm_file)
+                        self._music_object = sound.play()
             else:
                 if self._music_object and self._music_object.is_playing():
                     self._music_object.stop()
@@ -182,7 +229,8 @@ class AnnounceControllerProperty:
             self.set_timeout("driving_bgm")
         except Exception as e:
             self._node.get_logger().error(
-                "not able to check the pending playing list: " + str(e), throttle_duration_sec=10
+                "not able to check the pending playing list: " + str(e),
+                throttle_duration_sec=10,
             )
 
     def in_range(self, input_value, range_value):
@@ -194,18 +242,23 @@ class AnnounceControllerProperty:
                 self._autoware.information.localization_init_state
                 == LocalizationInitializationState.UNINITIALIZED
             ):
-                self._prev_motion_state = 0
+                self._prev_motion_state = MotionState.UNKNOWN
                 return
 
             if (
                 self._autoware.information.motion_state
                 in [MotionState.STARTING, MotionState.MOVING]
-                and self._prev_motion_state == 1
+                and self._prev_motion_state == MotionState.STOPPED
             ):
+                self._stop_announce_executed = False
                 if not self._skip_announce:
                     self._skip_announce = True
-                else:
+                elif self._node.get_clock().now() - self._engage_trigger_time > Duration(
+                    seconds=self._announce_interval_parameter.accept_start
+                ):
                     self.send_announce("departure")
+                    self._engage_trigger_time = self._node.get_clock().now()
+
                 self.reset_all_timeout()
                 if self._autoware.information.motion_state == MotionState.STARTING:
                     self._service_interface.accept_start()
@@ -217,7 +270,7 @@ class AnnounceControllerProperty:
             # Send again when stopped in starting state for a certain period of time
             if (
                 self._autoware.information.motion_state == MotionState.STARTING
-                and self.not_timeout("accept_start")
+                and self.in_interval("accept_start")
             ):
                 self._service_interface.accept_start()
 
@@ -237,6 +290,14 @@ class AnnounceControllerProperty:
         except Exception as e:
             self._node.get_logger().error("not able to check the current playing: " + str(e))
 
+    # skip announce by setting
+    def check_announce_or_not(self, message):
+        try:
+            return getattr(self._announce_settings, message)
+        except Exception as e:
+            self._node.get_logger().error("check announce or not: " + str(e))
+            return False
+
     def play_sound(self, message):
         if (
             self._parameter.mute_overlap_bgm
@@ -255,6 +316,13 @@ class AnnounceControllerProperty:
             )
 
     def send_announce(self, message):
+        if not self._autoware.information.autoware_control:
+            self._node.get_logger().info("The vehicle is not control by autoware, skip announce")
+            return
+
+        if not self.check_announce_or_not(message):
+            return
+
         priority = PRIORITY_DICT.get(message, 0)
         previous_priority = PRIORITY_DICT.get(self._current_announce, 0)
 
@@ -265,7 +333,10 @@ class AnnounceControllerProperty:
         self._current_announce = message
 
     def emergency_checker_callback(self):
-        in_emergency = self._autoware.information.mrm_behavior == MrmState.EMERGENCY_STOP
+        if self._autoware.information.operation_mode == OperationModeState.STOP:
+            in_emergency = False
+        else:
+            in_emergency = self._autoware.information.mrm_behavior == MrmState.EMERGENCY_STOP
 
         in_slow_stop = (
             self._autoware.information.mrm_behavior == MrmState.COMFORTABLE_STOP
@@ -275,11 +346,11 @@ class AnnounceControllerProperty:
         if in_emergency and not self._in_emergency_state:
             self.send_announce("emergency")
         elif in_emergency and self._in_emergency_state:
-            if not self.not_timeout("in_emergency"):
+            if not self.in_interval("in_emergency"):
                 self.send_announce("in_emergency")
                 self.set_timeout("in_emergency")
         elif in_slow_stop and self._in_slow_stop_state:
-            if not self.not_timeout("in_emergency"):
+            if not self.in_interval("in_emergency"):
                 self.send_announce("in_emergency")
                 self.set_timeout("in_emergency")
 
@@ -287,7 +358,7 @@ class AnnounceControllerProperty:
         self._in_slow_stop_state = in_slow_stop
 
     def turn_signal_callback(self):
-        if self.not_timeout("turn_signal"):
+        if self.in_interval("turn_signal"):
             return
         elif self._in_emergency_state or self._in_stop_status:
             return
@@ -303,7 +374,8 @@ class AnnounceControllerProperty:
     def stop_reason_checker_callback(self):
         if not self.check_in_autonomous():
             self._node.get_logger().warning(
-                "The vehicle is not in driving state, do not announce", throttle_duration_sec=10
+                "The vehicle is not in driving state, do not announce",
+                throttle_duration_sec=10,
             )
             return
 
@@ -311,48 +383,22 @@ class AnnounceControllerProperty:
         if self._in_emergency_state:
             return
 
-        stop_reasons = self._autoware.information.stop_reasons
-        shortest_stop_reason = ""
-        shortest_distance = -1
-        for stop_reason in stop_reasons:
-            dist_to_stop_pose = -1
-            for stop_factor in stop_reason.stop_factors:
-                if dist_to_stop_pose > stop_factor.dist_to_stop_pose or dist_to_stop_pose == -1:
-                    dist_to_stop_pose = stop_factor.dist_to_stop_pose
-            if shortest_distance == -1 or shortest_distance > dist_to_stop_pose:
-                shortest_distance = dist_to_stop_pose
-                shortest_stop_reason = stop_reason.reason
+        if self._stop_announce_executed == True:
+            return
+
+        execute_stop_announce = False
+        for velocity_factor in self._autoware.information.velocity_factors:
+            if velocity_factor.behavior in STOP_ANNOUNCE_BEHAVIORS:
+                execute_stop_announce = True
+                break
 
         # 音声の通知
-        if shortest_stop_reason != "" and shortest_distance > -1 and shortest_distance < 2:
-            if self.not_timeout("stop_reason"):
+        if execute_stop_announce == True and self._autoware.information.motion_state == MotionState.STOPPED:
+            if self.in_interval("stop_reason"):
                 return
 
-            if (
-                shortest_stop_reason
-                in [
-                    "ObstacleStop",
-                    "DetectionArea",
-                    "SurroundObstacleCheck",
-                    "BlindSpot",
-                    "BlockedByObstacles",
-                ]
-                and self._autoware.information.velocity == 0
-            ):
-                self.announce_stop_reason("obstacle_stop")
-            elif shortest_stop_reason in [
-                "Intersection",
-                "MergeFromPrivateRoad",
-                "Crosswalk",
-                "Walkway",
-                "StopLine",
-                "NoStoppingArea",
-                "TrafficLight",
-                "BlindSpot",
-            ]:
-                self.announce_stop_reason("temporary_stop")
-            else:
-                self._in_stop_status = False
+            self.announce_stop_reason("temporary_stop")
+            self._stop_announce_executed = True
         else:
             self._in_stop_status = False
 
@@ -360,3 +406,18 @@ class AnnounceControllerProperty:
         self._in_stop_status = True
         self.send_announce(file)
         self.set_timeout("stop_reason")
+
+    def publish_volume_callback(self):
+        self._sink = self._pulse.get_sink_by_name(self._pulse.server_info().default_sink_name)
+        self._get_volume_pub.publish(Float32(data=self._sink.volume.value_flat))
+
+    def set_volume(self, request, response):
+        try:
+            self._sink = self._pulse.get_sink_by_name(self._pulse.server_info().default_sink_name)
+            self._pulse.volume_set_all_chans(self._sink, request.volume)
+            with open(CURRENT_VOLUME_PATH, "w") as f:
+                f.write(f"{self._sink.volume.value_flat}\n")
+            response.status.code = ResponseStatus.SUCCESS
+        except Exception:
+            response.status.code = ResponseStatus.ERROR
+        return response

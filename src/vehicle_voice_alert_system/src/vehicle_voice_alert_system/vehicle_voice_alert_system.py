@@ -3,6 +3,7 @@
 import rclpy
 from rclpy.node import Node
 
+from vehicle_voice_alert_system.heartbeat import Heartbeat
 from vehicle_voice_alert_system.announce_controller import AnnounceControllerProperty
 from vehicle_voice_alert_system.ros_service_interface import RosServiceInterface
 from vehicle_voice_alert_system.parameter_interface import ParameterInterface
@@ -16,6 +17,7 @@ def main(args=None):
     rclpy.init(args=args)
     node = Node("vehicle_voice_alert_system")
 
+    heartbeat = Heartbeat(node)
     ros_service_interface = RosServiceInterface(node)
     parameter_interface = ParameterInterface(node)
     autoware_interface = AutowareInterface(node)
